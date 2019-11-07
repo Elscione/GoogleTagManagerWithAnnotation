@@ -19,10 +19,10 @@ class AnnotationProcessor : AbstractProcessor() {
         const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
     }
 
-    override fun process(p0: MutableSet<out TypeElement>?, p1: RoundEnvironment?): Boolean {
+    override fun process(elements: MutableSet<out TypeElement>?, roundEnv: RoundEnvironment?): Boolean {
 
-        if (p1 != null) {
-            AnnotatedClass.getAnnotatedClasses(p1, processingEnv)
+        if (roundEnv != null) {
+            AnnotatedClass.getAnnotatedClasses(roundEnv, processingEnv)
             AnnotatedClass.annotatedClasses.forEach {
                 it.fields.putAll(ClassField.getClassFields(it))
             }

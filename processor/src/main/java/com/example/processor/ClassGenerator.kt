@@ -3,6 +3,7 @@ package com.example.processor
 import com.example.annotation.BundleThis
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.jvm.jvmStatic
+import javax.xml.stream.events.Characters
 
 class ClassGenerator {
     companion object {
@@ -42,7 +43,7 @@ class ClassGenerator {
             val className = typeNameClass.toString().split(".").last()
 
             if (it.value.isNullable) {
-                val default = if (it.value.defaultValue is String) "\"${it.value.defaultValue}\"" else it.value.defaultValue
+                val default = if (isString(it.value.defaultValue)) "\"${it.value.defaultValue}\"" else if (isChar(it.value.defaultValue)) "\'${it.value.defaultValue}\'" else it.value.defaultValue
                 statement = """
                     if (${modelClassName}.${it.value.element.simpleName} == null) {
                         bundle.put${className}("${it.key}", $default)
@@ -58,5 +59,8 @@ class ClassGenerator {
 
             return statement
         }
+
+        private fun isChar(it: Any?) = (it is Char || it is Characters)
+        private fun isString(it: Any?) = (it is String)
     }
 }
