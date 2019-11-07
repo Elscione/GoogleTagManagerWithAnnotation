@@ -16,8 +16,8 @@ class ClassField(
 ) {
     companion object {
         val DEFAULT_VALUE = mapOf(
-            "java.lang.String" to "",
-            "kotlin.String" to "",
+            "java.lang.String" to "\"\"",
+            "kotlin.String" to "\"\"",
             "kotlin.Byte" to 0,
             "java.lang.Byte" to 0,
             "kotlin.Short" to 0,
@@ -32,8 +32,29 @@ class ClassField(
             "java.lang.Float" to 0.0f,
             "kotlin.Boolean" to false,
             "java.lang.Boolean" to false,
-            "kotlin.Char" to '\u0000',
-            "java.lang.Character" to '\u0000'
+            "kotlin.Char" to "\'\u0000\'",
+            "java.lang.Character" to "\'\u0000\'"
+        )
+
+        val BUNDLE_TYPE = mapOf(
+            "java.lang.String" to "String",
+            "kotlin.String" to "String",
+            "kotlin.Byte" to "Byte",
+            "java.lang.Byte" to "Byte",
+            "kotlin.Short" to "Short",
+            "java.lang.Short" to "Short",
+            "kotlin.Int" to "Int",
+            "java.lang.Integer" to "Int",
+            "kotlin.Long" to "Long",
+            "java.lang.Long" to "Long",
+            "kotlin.Double" to "Double",
+            "java.lang.Double" to "Double",
+            "kotlin.Float" to "Float",
+            "java.lang.Float" to "Float",
+            "kotlin.Boolean" to "Boolean",
+            "java.lang.Boolean" to "Boolean",
+            "kotlin.Char" to "Char",
+            "java.lang.Character" to "Char"
         )
 
         fun getClassFields(clazz: AnnotatedClass): Map<String, ClassField> {
@@ -47,7 +68,7 @@ class ClassField(
                     val isNullable = isElementNullable(it)
                     val key = getKey(it, clazz.nameAsKey)
 
-                    if (isElementValid(isNullable, defaultAnnotation, defaultValue)) {
+                    if (isElementValid(isNullable, defaultAnnotation, defaultValue, it, clazz.nameAsKey)) {
                         fields[key!!] = ClassField(it, isDefault(defaultAnnotation, clazz.defaultAll), defaultValue, isNullable)
                     } else {
                         throw Exception("Property ${it.simpleName} on class ${clazz.getClassName()} must have default value")
@@ -72,7 +93,41 @@ class ClassField(
 
         private fun isDefault(defaultAnnotation: Default?, defaultAll: Boolean) = defaultAnnotation?.default ?: defaultAll
 
-        private fun isElementValid(nullable: Boolean, defaultAnnotation: Default?, defaultValue: Any?) = !(nullable && defaultAnnotation == null && defaultValue == null)
+        private fun isElementValid(
+            nullable: Boolean,
+            defaultAnnotation: Default?,
+            defaultValue: Any?,
+            it: VariableElement,
+            nameAsKey: Boolean
+        ) = (!nullable || (defaultAnnotation != null || defaultValue != null)) && !hasDuplicateDefaultAnnotation(it, defaultAnnotation) && !hasDuplicateKey(it, nameAsKey)
+
+        private fun hasDuplicateKey(it: VariableElement, nameAsKey: Boolean): Boolean {
+            if (!nameAsKey) return false
+            if (it.getAnnotation(BundleKey::class.java) != null) {
+                throw Exception("Property ${it.simpleName} has duplicate key definition")
+            }
+
+            return false
+        }
+
+        private fun hasDuplicateDefaultAnnotation(
+            it: VariableElement,
+            defaultAnnotation: Default?
+        ): Boolean {
+            if (defaultAnnotation == null) return false
+            if (it.getAnnotation(DefaultValueString::class.java) != null ||
+                it.getAnnotation(DefaultValueLong::class.java) != null ||
+                it.getAnnotation(DefaultValueChar::class.java) != null ||
+                it.getAnnotation(DefaultValueDouble::class.java) != null ||
+                it.getAnnotation(DefaultValueFloat::class.java) != null ||
+                it.getAnnotation(DefaultValueInt::class.java) != null ||
+                it.getAnnotation(DefaultValueShort::class.java) != null ||
+                it.getAnnotation(DefaultValueBoolean::class.java) != null ||
+                it.getAnnotation(DefaultValueByte::class.java) != null) {
+                throw Exception("Property ${it.simpleName} has two default value definition")
+            }
+            return false
+        }
 
         private fun isElementNullable(it: VariableElement) = it.getAnnotation(Nullable::class.java) != null
 
@@ -83,9 +138,9 @@ class ClassField(
             it.getAnnotation(DefaultValueInt::class.java) != null -> it.getAnnotation(DefaultValueInt::class.java).value
             it.getAnnotation(DefaultValueFloat::class.java) != null -> it.getAnnotation(DefaultValueFloat::class.java).value
             it.getAnnotation(DefaultValueDouble::class.java) != null -> it.getAnnotation(DefaultValueDouble::class.java).value
-            it.getAnnotation(DefaultValueChar::class.java) != null -> it.getAnnotation(DefaultValueChar::class.java).value
+            it.getAnnotation(DefaultValueChar::class.java) != null -> "\'${it.getAnnotation(DefaultValueChar::class.java).value}\'"
             it.getAnnotation(DefaultValueLong::class.java) != null -> it.getAnnotation(DefaultValueLong::class.java).value
-            it.getAnnotation(DefaultValueString::class.java) != null -> it.getAnnotation(DefaultValueString::class.java).value
+            it.getAnnotation(DefaultValueString::class.java) != null -> "\"${it.getAnnotation(DefaultValueString::class.java).value}\""
             else -> getDefaultValueBasedOnType(it, defaultAnnotation, defaultAll)
         }
 

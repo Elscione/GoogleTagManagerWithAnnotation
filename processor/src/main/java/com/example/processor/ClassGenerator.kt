@@ -1,9 +1,6 @@
 package com.example.processor
 
-import com.example.annotation.BundleThis
 import com.squareup.kotlinpoet.*
-import com.squareup.kotlinpoet.jvm.jvmStatic
-import javax.xml.stream.events.Characters
 
 class ClassGenerator {
     companion object {
@@ -20,11 +17,21 @@ class ClassGenerator {
         private fun generateClass(clazz: AnnotatedClass): FileSpec {
             val classBuilder = TypeSpec.classBuilder("${clazz.getClassName()}Bundler")
             val getBundleFuncBuilder = FunSpec.builder("getBundle")
-                .addParameter(ParameterSpec.builder(clazz.getClassName().toLowerCase(), clazz.element.asType().asTypeName()).build())
+                .addParameter(
+                    ParameterSpec.builder(
+                        clazz.getClassName().toLowerCase(),
+                        clazz.element.asType().asTypeName()
+                    ).build()
+                )
                 .addStatement("val bundle = %N()", ClassName("android.os", "Bundle").simpleName)
 
             clazz.fields.forEach {
-                getBundleFuncBuilder.addStatement(createBundlePutStatement(clazz.getClassName().toLowerCase(), it))
+                getBundleFuncBuilder.addStatement(
+                    createBundlePutStatement(
+                        clazz.getClassName().toLowerCase(),
+                        it
+                    )
+                )
             }
 
             getBundleFuncBuilder.returns(ClassName("android.os", "Bundle"))
@@ -36,31 +43,29 @@ class ClassGenerator {
                 .build()
         }
 
-        private fun createBundlePutStatement(modelClassName: String, it: Map.Entry<String, ClassField>): String {
-            var statement: String
+        private fun createBundlePutStatement(
+            modelClassName: String,
+            it: Map.Entry<String, ClassField>
+        ): String {
+            val statement: String
 
             val typeNameClass = it.value.element.asType().asTypeName()
-            val className = typeNameClass.toString().split(".").last()
 
             if (it.value.isNullable) {
-                val default = if (isString(it.value.defaultValue)) "\"${it.value.defaultValue}\"" else if (isChar(it.value.defaultValue)) "\'${it.value.defaultValue}\'" else it.value.defaultValue
                 statement = """
                     if (${modelClassName}.${it.value.element.simpleName} == null) {
-                        bundle.put${className}("${it.key}", $default)
+                        bundle.put${ClassField.BUNDLE_TYPE[typeNameClass.toString()]}("${it.key}", ${it.value.defaultValue})
                     } else {
-                        bundle.put${className}("${it.key}", ${modelClassName}.${it.value.element.simpleName})
+                        bundle.put${ClassField.BUNDLE_TYPE[typeNameClass.toString()]}("${it.key}", ${modelClassName}.${it.value.element.simpleName})
                     }
                 """.trimIndent()
             } else {
                 statement = """
-                    bundle.put${className}("${it.key}", ${modelClassName}.${it.value.element.simpleName})
+                    bundle.put${ClassField.BUNDLE_TYPE[typeNameClass.toString()]}("${it.key}", ${modelClassName}.${it.value.element.simpleName})
                 """.trimIndent()
             }
 
             return statement
         }
-
-        private fun isChar(it: Any?) = (it is Char || it is Characters)
-        private fun isString(it: Any?) = (it is String)
     }
 }
