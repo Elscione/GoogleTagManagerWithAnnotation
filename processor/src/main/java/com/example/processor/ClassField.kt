@@ -8,7 +8,12 @@ import org.jetbrains.annotations.Nullable
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.VariableElement
 
-class ClassField {
+class ClassField(
+    val element: VariableElement,
+    val default: Boolean,
+    val defaultValue: Any?,
+    val isNullable: Boolean
+) {
     companion object {
         val DEFAULT_VALUE = mapOf(
             "java.lang.String" to "",
@@ -28,7 +33,7 @@ class ClassField {
             "kotlin.Boolean" to false,
             "java.lang.Boolean" to false,
             "kotlin.Char" to '\u0000',
-            "java.lang.Char" to '\u0000'
+            "java.lang.Character" to '\u0000'
         )
 
         fun getClassFields(clazz: AnnotatedClass): Map<String, ClassField> {
@@ -84,11 +89,6 @@ class ClassField {
             else -> getDefaultValueBasedOnType(it, defaultAnnotation, defaultAll)
         }
 
-        // all = true , anno == null -> true
-        // all = true , anno == true -> true
-        // all = true, anno == false -> false
-        // all = false, anno == true -> true
-
         private fun getDefaultValueBasedOnType(it: VariableElement, defaultAnnotation: Default?, defaultAll: Boolean) =
             if (defaultAll) {
                 if (defaultAnnotation != null && !defaultAnnotation.default) {
@@ -107,15 +107,4 @@ class ClassField {
         private fun isElementKeyDefined(it: VariableElement) = it.getAnnotation(BundleKey::class.java) != null
     }
 
-    val element: VariableElement
-    val isNullable: Boolean
-    val default: Boolean
-    val defaultValue: Any?
-
-    constructor(element: VariableElement, default: Boolean, defaultValue: Any?, isNullable: Boolean) {
-        this.element = element
-        this.default = default
-        this.defaultValue = defaultValue
-        this.isNullable = isNullable
-    }
 }
