@@ -1,6 +1,6 @@
 package com.example.processor
 
-import com.example.annotation.BundleKey
+import com.example.annotation.Key
 import com.example.annotation.Default
 import com.example.annotation.defaultvalue.*
 import com.squareup.kotlinpoet.asTypeName
@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.VariableElement
 
-class ClassField(
+class ModelClassField(
     val element: VariableElement,
     val default: Boolean,
     val defaultValue: Any?,
@@ -33,7 +33,8 @@ class ClassField(
             "kotlin.Boolean" to false,
             "java.lang.Boolean" to false,
             "kotlin.Char" to "\'\u0000\'",
-            "java.lang.Character" to "\'\u0000\'"
+            "java.lang.Character" to "\'\u0000\'",
+            "java.util.ArrayList" to "listOf<Any>()"
         )
 
         val BUNDLE_TYPE = mapOf(
@@ -54,11 +55,12 @@ class ClassField(
             "kotlin.Boolean" to "Boolean",
             "java.lang.Boolean" to "Boolean",
             "kotlin.Char" to "Char",
-            "java.lang.Character" to "Char"
+            "java.lang.Character" to "Char",
+            "java.util.ArrayList" to "ParcelableArrayList"
         )
 
-        fun getClassFields(clazz: AnnotatedClass): Map<String, ClassField> {
-            val fields = mutableMapOf<String, ClassField>()
+        fun getClassFields(clazz: AnnotatedModelClass): Map<String, ModelClassField> {
+            val fields = mutableMapOf<String, ModelClassField>()
             val elements = clazz.element.enclosedElements
 
             elements.forEach {
@@ -69,7 +71,7 @@ class ClassField(
                     val key = getKey(it, clazz.nameAsKey)
 
                     if (isElementValid(isNullable, defaultAnnotation, defaultValue, it, clazz.nameAsKey)) {
-                        fields[key!!] = ClassField(it, isDefault(defaultAnnotation, clazz.defaultAll), defaultValue, isNullable)
+                        fields[key!!] = ModelClassField(it, isDefault(defaultAnnotation, clazz.defaultAll), defaultValue, isNullable)
                     } else {
                         throw Exception("Property ${it.simpleName} on class ${clazz.getClassName()} must have default value")
                     }
@@ -83,8 +85,8 @@ class ClassField(
             if (nameAsKey) {
                 return it.simpleName.toString()
             } else {
-                if (it.getAnnotation(BundleKey::class.java) != null) {
-                    return it.getAnnotation(BundleKey::class.java).key
+                if (it.getAnnotation(Key::class.java) != null) {
+                    return it.getAnnotation(Key::class.java).key
                 } else {
                     return null
                 }
@@ -103,7 +105,7 @@ class ClassField(
 
         private fun hasDuplicateKey(it: VariableElement, nameAsKey: Boolean): Boolean {
             if (!nameAsKey) return false
-            if (it.getAnnotation(BundleKey::class.java) != null) {
+            if (it.getAnnotation(Key::class.java) != null) {
                 throw Exception("Property ${it.simpleName} has duplicate key definition")
             }
 
@@ -159,7 +161,7 @@ class ClassField(
                 }
             }
 
-        private fun isElementKeyDefined(it: VariableElement) = it.getAnnotation(BundleKey::class.java) != null
+        private fun isElementKeyDefined(it: VariableElement) = it.getAnnotation(Key::class.java) != null
     }
 
 }

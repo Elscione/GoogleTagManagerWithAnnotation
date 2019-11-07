@@ -7,9 +7,9 @@ import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.TypeElement
 
-class AnnotatedClass {
+class AnnotatedModelClass {
     companion object {
-        val annotatedClasses = mutableSetOf<AnnotatedClass>()
+        val annotatedClasses = mutableSetOf<AnnotatedModelClass>()
 
         fun getAnnotatedClasses(roundEnv: RoundEnvironment, processingEnvironment: ProcessingEnvironment) {
             roundEnv.getElementsAnnotatedWith(BundleThis::class.java).forEach {
@@ -22,7 +22,7 @@ class AnnotatedClass {
                 val nameAsKey: Boolean = annotation.nameAsKey
                 val defaultAll: Boolean = annotation.defaultAll
 
-                annotatedClasses.add(AnnotatedClass(it as TypeElement, pack, nameAsKey, defaultAll))
+                annotatedClasses.add(AnnotatedModelClass(it as TypeElement, pack, nameAsKey, defaultAll))
             }
         }
     }
@@ -31,7 +31,7 @@ class AnnotatedClass {
     val pack: String
     val nameAsKey: Boolean
     val defaultAll: Boolean
-    val fields: MutableMap<String, ClassField> = mutableMapOf()
+    val fields: MutableMap<String, ModelClassField> = mutableMapOf()
 
     constructor(element: TypeElement, pack: String, nameAsKey: Boolean, defaultAll: Boolean) {
         this.element = element
