@@ -36,7 +36,7 @@ class ModelClassGenerator {
 
             getBundleFuncBuilder.returns(ClassName("android.os", "Bundle"))
             getBundleFuncBuilder.addStatement("return bundle")
-            classBuilder.addFunction(getBundleFuncBuilder.build())
+            classBuilder.addType(TypeSpec.companionObjectBuilder().addFunction(getBundleFuncBuilder.build()).build())
 
             return FileSpec.builder(clazz.pack, "${clazz.getClassName()}Bundler")
                 .addType(classBuilder.build())

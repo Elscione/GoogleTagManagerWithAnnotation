@@ -1,9 +1,9 @@
 package com.example.processor
 
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.sun.tools.javac.code.Type
 import javax.lang.model.element.VariableElement
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 
 class EventClassGenerator {
     companion object {
@@ -41,21 +41,40 @@ class EventClassGenerator {
             clazz.params.forEach {
                 var fqName = getFqName(it.value.element.asType().asTypeName())
                 if (isCollection(fqName)) {
-                    val typeName = (it.value.element.asType() as Type.ClassType).typarams_field[0].asTypeName()
+                    val typeName =
+                        (it.value.element.asType() as Type.ClassType).typarams_field[0].asTypeName()
                     getBundleFuncBuilder.addParameter(it.key, getKotlinClass(fqName, typeName)!!)
                 } else {
-                    getBundleFuncBuilder.addParameter(it.key, JAVA_TO_KOTLIN_MAP[it.value.element.asType().asTypeName().toString()]!!)
+                    getBundleFuncBuilder.addParameter(
+                        it.key,
+                        JAVA_TO_KOTLIN_MAP[it.value.element.asType().asTypeName().toString()]!!
+                    )
                 }
-                getBundleFuncBuilder.addStatement(createPutBundleStatement(it, clazz.getClassName()))
+                getBundleFuncBuilder.addStatement(
+                    createPutBundleStatement(
+                        it,
+                        clazz.getClassName()
+                    )
+                )
             }
 
             getBundleFuncBuilder.returns(ClassName("android.os", "Bundle"))
             getBundleFuncBuilder.addStatement("return bundle")
-            classBuilder.addFunction(getBundleFuncBuilder.build())
+            classBuilder.addType(
+                TypeSpec.companionObjectBuilder()
+                    .addFunction(
+                        getBundleFuncBuilder.build()
+                    )
+                    .addProperty(
+                        PropertySpec.builder("KEY", String::class)
+                            .initializer("%S", clazz.eventKey)
+                            .build()
+                    )
+                    .build()
+            )
 
             return FileSpec.builder(clazz.pack, "${clazz.getClassName()}Bundler")
                 .addType(classBuilder.build())
-                .addFunction(getBundleFuncBuilder.build())
                 .build()
         }
 
@@ -107,17 +126,20 @@ class EventClassGenerator {
             it: Map.Entry<String, EventClassField>
         ): String {
             val className = (it.value.element.asType() as Type).tsym.toString()
-            val typeName = (it.value.element.asType() as Type.ClassType).typarams_field[0].toString().split(".").last()
+            val typeName =
+                (it.value.element.asType() as Type.ClassType).typarams_field[0].toString()
+                    .split(".").last()
 
             return """
                 val ${it.key}_items = ArrayList<Bundle>()
                 ${it.key}.forEach {
-                    ${it.key}_items.add(${typeName}Bundler().getBundle(it))
+                    ${it.key}_items.add(${typeName}Bundler.getBundle(it))
                 }
                 bundle.put${ModelClassField.BUNDLE_TYPE[className]}("${it.key}", ${it.key}_items)
             """.trimIndent()
         }
 
-        private fun isPrimitive(it: VariableElement) = ModelClassField.DEFAULT_VALUE[it.asType().asTypeName().toString()] != null
+        private fun isPrimitive(it: VariableElement) =
+            ModelClassField.DEFAULT_VALUE[it.asType().asTypeName().toString()] != null
     }
 }
