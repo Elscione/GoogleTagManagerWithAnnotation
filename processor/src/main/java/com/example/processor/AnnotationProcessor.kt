@@ -22,6 +22,7 @@ class AnnotationProcessor : AbstractProcessor() {
         if (roundEnv != null) {
             processAnnotatedModelClass(roundEnv)
             processAnnotatedEventClass(roundEnv)
+            processAnnotatedObjectClass(roundEnv)
         }
 
         return true
@@ -46,6 +47,20 @@ class AnnotationProcessor : AbstractProcessor() {
             it.params.putAll(EventClassField.getClassFields(it))
         }
         val files = EventClassGenerator.generateClasses()
+
+        files.forEach {
+            val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
+            it.writeTo(File(kaptKotlinGeneratedDir))
+        }
+    }
+
+    private fun processAnnotatedObjectClass(roundEnv: RoundEnvironment) {
+        AnnotatedObjectClass.getAnnotatedObjectClass(roundEnv, processingEnv)
+        AnnotatedObjectClass.annotatedObjectClass.forEach {
+            it.fields.putAll(ObjectClassField.getClassFields(it))
+        }
+
+        val files = ObjectClassGenerator.generateClasses()
 
         files.forEach {
             val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
