@@ -7,7 +7,11 @@ import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.TypeElement
 
-class AnnotatedModelClass {
+open class AnnotatedModelClass(
+    val element: TypeElement,
+    val pack: String,
+    val nameAsKey: Boolean,
+    val defaultAll: Boolean) {
     companion object {
         val annotatedClasses = mutableSetOf<AnnotatedModelClass>()
 
@@ -27,18 +31,10 @@ class AnnotatedModelClass {
         }
     }
 
-    val element: TypeElement
-    val pack: String
-    val nameAsKey: Boolean
-    val defaultAll: Boolean
     val fields: MutableMap<String, ModelClassField> = mutableMapOf()
 
-    constructor(element: TypeElement, pack: String, nameAsKey: Boolean, defaultAll: Boolean) {
-        this.element = element
-        this.pack = pack
-        this.nameAsKey = nameAsKey
-        this.defaultAll = defaultAll
-    }
 
     fun getClassName() = element.asType().asTypeName().toString().split(".").last()
+
+    fun getFqName() = "${pack}.${getClassName()}"
 }

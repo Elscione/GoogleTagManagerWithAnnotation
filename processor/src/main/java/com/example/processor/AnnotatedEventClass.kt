@@ -8,12 +8,11 @@ import javax.lang.model.element.ElementKind
 import javax.lang.model.element.TypeElement
 
 class AnnotatedEventClass(
-    val element: TypeElement,
-    val pack: String,
-    val nameAsKey: Boolean,
-    val eventKey: String,
-    val params: MutableMap<String, EventClassField> = mutableMapOf()
-) {
+    element: TypeElement,
+    pack: String,
+    nameAsKey: Boolean,
+    val eventKey: String
+): AnnotatedModelClass(element, pack, nameAsKey, true) {
     companion object {
         val annotatedEventClass = mutableSetOf<AnnotatedEventClass>()
 
@@ -32,6 +31,4 @@ class AnnotatedEventClass(
             }
         }
     }
-
-    fun getClassName() = element.asType().asTypeName().toString().split(".").last()
 }

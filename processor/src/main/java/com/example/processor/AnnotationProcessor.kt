@@ -3,8 +3,9 @@ package com.example.processor
 import com.example.annotation.*
 import com.example.annotation.defaultvalue.*
 import com.google.auto.service.AutoService
-import java.io.File
+import com.squareup.javapoet.JavaFile
 import javax.annotation.processing.AbstractProcessor
+import javax.annotation.processing.FilerException
 import javax.annotation.processing.Processor
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
@@ -13,16 +14,14 @@ import javax.lang.model.element.TypeElement
 @AutoService(Processor::class)
 class AnnotationProcessor : AbstractProcessor() {
 
-    companion object {
-        const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
-    }
-
-    override fun process(elements: MutableSet<out TypeElement>?, roundEnv: RoundEnvironment?): Boolean {
+    override fun process(
+        elements: MutableSet<out TypeElement>?,
+        roundEnv: RoundEnvironment?
+    ): Boolean {
 
         if (roundEnv != null) {
             processAnnotatedModelClass(roundEnv)
             processAnnotatedEventClass(roundEnv)
-//            processAnnotatedObjectClass(roundEnv)
         }
 
         return true
@@ -33,39 +32,31 @@ class AnnotationProcessor : AbstractProcessor() {
         AnnotatedModelClass.annotatedClasses.forEach {
             it.fields.putAll(ModelClassField.getClassFields(it))
         }
-        val files = ModelClassGenerator.generateClasses()
-
-        files.forEach {
-            val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
-            it.writeTo(File(kaptKotlinGeneratedDir))
+        val files = mutableListOf<JavaFile>()
+        AnnotatedModelClass.annotatedClasses.forEach {
+            files.add(ModelClassGenerator(it).generate())
         }
+        try {
+            files.forEach {
+                it.writeTo(processingEnv.filer)
+            }
+        } catch (ignored: FilerException) {}
     }
 
     private fun processAnnotatedEventClass(roundEnv: RoundEnvironment) {
         AnnotatedEventClass.getAnnotatedEventClasses(roundEnv, processingEnv)
         AnnotatedEventClass.annotatedEventClass.forEach {
-            it.params.putAll(EventClassField.getClassFields(it))
+            it.fields.putAll(ModelClassField.getClassFields(it))
         }
-        val files = EventClassGenerator.generateClasses()
-
-        files.forEach {
-            val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
-            it.writeTo(File(kaptKotlinGeneratedDir))
+        val files = mutableListOf<JavaFile>()
+        AnnotatedEventClass.annotatedEventClass.forEach {
+            files.add(EventClassGenerator(it).generate())
         }
-    }
-
-    private fun processAnnotatedObjectClass(roundEnv: RoundEnvironment) {
-        AnnotatedObjectClass.getAnnotatedObjectClass(roundEnv, processingEnv)
-        AnnotatedObjectClass.annotatedObjectClass.forEach {
-            it.fields.putAll(ObjectClassField.getClassFields(it))
-        }
-
-        val files = ObjectClassGenerator.generateClasses()
-
-        files.forEach {
-            val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
-            it.writeTo(File(kaptKotlinGeneratedDir))
-        }
+        try {
+            files.forEach {
+                it.writeTo(processingEnv.filer)
+            }
+        } catch (ignored: FilerException) {}
     }
 
     override fun getSupportedSourceVersion(): SourceVersion {
