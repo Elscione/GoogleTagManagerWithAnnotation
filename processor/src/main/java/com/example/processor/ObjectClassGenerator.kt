@@ -101,14 +101,14 @@ class ObjectClassGenerator {
             if (it.value.isNullable) {
                 statement = """
                     if (${modelClassName}.${it.value.element.simpleName} == null) {
-                        bundle.put${ModelClassField.BUNDLE_TYPE[typeNameClass.toString()]}("${it.key}", ${it.value.defaultValue})
+                        bundle.put${ObjectClassField.BUNDLE_TYPE[typeNameClass.toString()]}("${it.key}", ${it.value.defaultValue})
                     } else {
-                        bundle.put${ModelClassField.BUNDLE_TYPE[typeNameClass.toString()]}("${it.key}", ${modelClassName}.${it.value.element.simpleName})
+                        bundle.put${ObjectClassField.BUNDLE_TYPE[typeNameClass.toString()]}("${it.key}", ${modelClassName}.${it.value.element.simpleName})
                     }
                 """.trimIndent()
             } else {
                 statement = """
-                    bundle.put${ModelClassField.BUNDLE_TYPE[typeNameClass.toString()]}("${it.key}", ${modelClassName}.${it.value.element.simpleName})
+                    bundle.put${ObjectClassField.BUNDLE_TYPE[typeNameClass.toString()]}("${it.key}", ${modelClassName}.${it.value.element.simpleName})
                 """.trimIndent()
             }
 

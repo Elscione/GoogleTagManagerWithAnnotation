@@ -4,12 +4,15 @@ import com.example.annotation.BundleThis
 import com.example.annotation.Key
 import com.example.annotation.Default
 import com.example.annotation.defaultvalue.*
-import com.example.processor.utils.FieldType
+import com.example.processor.utils.*
 import com.squareup.javapoet.ClassName
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
+import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Type
 import org.jetbrains.annotations.Nullable
+import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.VariableElement
 
@@ -66,68 +69,54 @@ class ModelClassField(
 
         fun getClassFields(clazz: AnnotatedModelClass): Map<String, ModelClassField> {
             val fields = mutableMapOf<String, ModelClassField>()
-            val objectFields = mutableMapOf<String, ObjectClassField>()
             val elements = clazz.element.enclosedElements
 
             elements.forEach {
                 if (it.kind == ElementKind.FIELD && (clazz.nameAsKey || isElementKeyDefined(it as VariableElement))) {
                     val defaultAnnotation = it.getAnnotation(Default::class.java)
+                    val isBundleAble: Boolean = (it as Symbol).asType().asElement().getAnnotation(BundleThis::class.java) != null
                     val defaultValue =
                         getDefaultValue(it as VariableElement, defaultAnnotation, clazz.defaultAll)
                     val key = getKey(it, clazz.nameAsKey)
 
                     val isNullable = isElementNullable(it)
 
-                    if (isPrimitive(it.asType().asTypeName()) && !isNullable) {
+                    //isPrimitive -> Long?
+                    //isNullable
+                    //isString
+                    //Object -> nullable atau bukan
+                    //String but non primitive (object null or not)
+                    //int? -> isNullable -> object -> true -> !true -> !false -> true
 
-                        if (it.asType().getAnnotation(BundleThis::class.java) != null) {
+                    val fieldTypeName = com.squareup.javapoet.TypeName.get(it.asType())
 
-                            if (isParcelable(it)) {
-                                objectFields[key!!] = ObjectClassField(
-                                    it,
-                                    FieldType.Parcelable,
-                                    defaultValue,
-                                    isNullable
-                                )
-                            } else if (!isParcelable(it)) {
-                                objectFields[key!!] = ObjectClassField(
-                                    it,
-                                    FieldType.Bundle,
-                                    defaultValue,
-                                    isNullable
-                                )
+                    if(!isRawType(fieldTypeName) && !isMap(fieldTypeName) && !isSet(fieldTypeName) && !isList(fieldTypeName)) {
+                        if(!isBundleAble) {
+                            if(!isParcelable(it)) {
+                                throw Exception("Can't found annotation class ${BundleThis::class.java.simpleName} or Parcelable")
                             } else {
-                                throw Exception("Can't found class ${BundleThis::class.java} or Parcelable")
-                            }
-                        } else {
-                            if (isParcelable(it)) {
-                                objectFields[key!!] = ObjectClassField(
-                                    it,
-                                    FieldType.Parcelable,
-                                    defaultValue,
-                                    isNullable
-                                )
+                                return@forEach
                             }
                         }
+                    }
 
+                    if (isElementValid(
+                            isNullable,
+                            defaultAnnotation,
+                            defaultValue,
+                            it,
+                            clazz.nameAsKey
+                        )
+                    ) {
+                        fields[key!!] = ModelClassField(
+                            it,
+                            isDefault(defaultAnnotation, clazz.defaultAll),
+                            defaultValue,
+                            isNullable
+                        )
                     } else {
-                        if (isElementValid(
-                                isNullable,
-                                defaultAnnotation,
-                                defaultValue,
-                                it,
-                                clazz.nameAsKey
-                            )
-                        ) {
-                            fields[key!!] = ModelClassField(
-                                it,
-                                isDefault(defaultAnnotation, clazz.defaultAll),
-                                defaultValue,
-                                isNullable
-                            )
-                        } else {
-                            throw Exception("Property ${it.simpleName} on class ${clazz.getClassName()} must have default value")
-                        }
+                        val name = it as VariableElement
+                        throw Exception("Property ${name.simpleName} on class ${clazz.getClassName()} must have default value")
                     }
                 }
             }
@@ -187,24 +176,12 @@ class ModelClassField(
 
         private fun isElementNullable(it: VariableElement) = it.getAnnotation(Nullable::class.java) != null
 
-        private fun isParcelable(it: VariableElement): Boolean {
-            var implementParcelable = false
-
-            (it.asType() as Type.ClassType).interfaces_field.forEach {
-                if (it.asTypeName().toString().equals("android.os.Parcelable")) {
-                    implementParcelable = true
-                }
-            }
-
-            return implementParcelable
-        }
-
         private fun getDefaultValue(it: VariableElement, defaultAnnotation: Default?, defaultAll: Boolean) = when {
             it.getAnnotation(DefaultValueByte::class.java) != null -> it.getAnnotation(DefaultValueByte::class.java).value
             it.getAnnotation(DefaultValueBoolean::class.java) != null -> it.getAnnotation(DefaultValueBoolean::class.java).value
-            it.getAnnotation(DefaultValueShort::class.java) != null -> it.getAnnotation(DefaultValueShort::class.java).value
+            it.getAnnotation(DefaultValueShort::class.java) != null -> "\"${it.getAnnotation(DefaultValueShort::class.java).value}F\""
             it.getAnnotation(DefaultValueInt::class.java) != null -> it.getAnnotation(DefaultValueInt::class.java).value
-            it.getAnnotation(DefaultValueFloat::class.java) != null -> it.getAnnotation(DefaultValueFloat::class.java).value
+            it.getAnnotation(DefaultValueFloat::class.java) != null -> it.getAnnotation(DefaultValueDouble::class.java).value
             it.getAnnotation(DefaultValueDouble::class.java) != null -> it.getAnnotation(DefaultValueDouble::class.java).value
             it.getAnnotation(DefaultValueChar::class.java) != null -> "\'${it.getAnnotation(DefaultValueChar::class.java).value}\'"
             it.getAnnotation(DefaultValueLong::class.java) != null -> it.getAnnotation(DefaultValueLong::class.java).value
@@ -240,6 +217,10 @@ class ModelClassField(
         }
 
         private fun isElementKeyDefined(it: VariableElement) = it.getAnnotation(Key::class.java) != null
+
+        private fun isNonString(it: VariableElement): Boolean = it.asType().toString() != "java.lang.String"
+
+
     }
 
 }

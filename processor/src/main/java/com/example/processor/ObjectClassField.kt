@@ -10,11 +10,13 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.asTypeName
 import com.sun.tools.javac.code.Type
 import javax.annotation.Nullable
+import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.VariableElement
 
 class ObjectClassField(
     val element: VariableElement,
+    val default: Boolean,
     val type: FieldType,
     val defaultValue: Any?,
     val isNullable: Boolean
@@ -22,6 +24,51 @@ class ObjectClassField(
 ) {
 
     companion object {
+
+        val DEFAULT_VALUE = mapOf(
+            "java.lang.String" to "\"\"",
+            "kotlin.String" to "\"\"",
+            "kotlin.Byte" to 0,
+            "java.lang.Byte" to 0,
+            "kotlin.Short" to 0,
+            "java.lang.Short" to 0,
+            "kotlin.Int" to 0,
+            "java.lang.Integer" to 0,
+            "kotlin.Long" to 0L,
+            "java.lang.Long" to 0L,
+            "kotlin.Double" to 0.0,
+            "java.lang.Double" to 0.0,
+            "kotlin.Float" to 0.0f,
+            "java.lang.Float" to 0.0f,
+            "kotlin.Boolean" to false,
+            "java.lang.Boolean" to false,
+            "kotlin.Char" to "\'\u0000\'",
+            "java.lang.Character" to "\'\u0000\'",
+            "java.util.ArrayList" to "listOf<Any>()"
+        )
+
+        val BUNDLE_TYPE = mapOf(
+            "java.lang.String" to "String",
+            "kotlin.String" to "String",
+            "kotlin.Byte" to "Byte",
+            "java.lang.Byte" to "Byte",
+            "kotlin.Short" to "Short",
+            "java.lang.Short" to "Short",
+            "kotlin.Int" to "Int",
+            "java.lang.Integer" to "Int",
+            "kotlin.Long" to "Long",
+            "java.lang.Long" to "Long",
+            "kotlin.Double" to "Double",
+            "java.lang.Double" to "Double",
+            "kotlin.Float" to "Float",
+            "java.lang.Float" to "Float",
+            "kotlin.Boolean" to "Boolean",
+            "java.lang.Boolean" to "Boolean",
+            "kotlin.Char" to "Char",
+            "java.lang.Character" to "Char",
+            "java.util.ArrayList" to "ParcelableArrayList"
+        )
+
         fun getClassFields(clazz: AnnotatedObjectClass): Map<String, ObjectClassField> {
 
             val fields = mutableMapOf<String, ObjectClassField>()
@@ -29,33 +76,44 @@ class ObjectClassField(
 
             elements.forEach {
                 if (it.kind == ElementKind.FIELD && clazz.nameAsKey) {
-                    val key = getKey(it as VariableElement, clazz.nameAsKey)
 
-                    val isNullable = isElementNullable(it)
                     val defaultAnnotation = it.getAnnotation(Default::class.java)
 
-                    val defaultValue =
-                        getDefaultValue(
-                            it,
-                            defaultAnnotation,
-                            clazz.defaultAll
-                        )
+                    val key = getKey(it as VariableElement, clazz.nameAsKey)
+                    val isNullable = isElementNullable(it)
+
+                    val defaultValue = getDefaultValue(
+                        it,
+                        defaultAnnotation,
+                        clazz.defaultAll
+                    )
+
+
 
                     if (key != null) {
 
-                        if (isParcelable(it)) {
-                            fields[key] = ObjectClassField(
-                                it,
-                                FieldType.Parcelable,
-                                defaultValue,
-                                isNullable
-                            )
-                        } else {
-                            fields[key] = ObjectClassField(
-                                it,
-                                FieldType.Bundle, defaultValue,
-                                isNullable
-                            )
+                        val isPrimitive = it.asType().kind.isPrimitive || isNullable
+                        val isString = it.asType().toString() != "java.lang.String"
+
+
+//                        if (!isPrimitive && isString) {
+                            if (isParcelable(it)) {
+                                fields[key] = ObjectClassField(
+                                    it,
+                                    isDefault(defaultAnnotation, clazz.defaultAll),
+                                    FieldType.Parcelable,
+                                    defaultValue,
+                                    isNullable
+                                )
+                            } else {
+                                fields[key] = ObjectClassField(
+                                    it,
+                                    isDefault(defaultAnnotation, clazz.defaultAll),
+
+                                    FieldType.Bundle, defaultValue,
+                                    isNullable
+                                )
+//                            }
                         }
                     }
                 }
@@ -108,11 +166,11 @@ class ObjectClassField(
                 if (defaultAnnotation != null && !defaultAnnotation.default) {
                     null
                 } else {
-                    ModelClassField.DEFAULT_VALUE[it.asType().asTypeName().toString()]
+                    DEFAULT_VALUE[it.asType().asTypeName().toString()]
                 }
             } else {
                 if (defaultAnnotation != null && defaultAnnotation.default) {
-                    ModelClassField.DEFAULT_VALUE[it.asType().asTypeName().toString()]
+                    DEFAULT_VALUE[it.asType().asTypeName().toString()]
                 } else {
                     null
                 }
@@ -133,16 +191,18 @@ class ObjectClassField(
             }
         }
 
-        private fun isParcelable(it: VariableElement): Boolean {
-            var implementParcelable = false
+        private fun isDefault(defaultAnnotation: Default?, defaultAll: Boolean) =
+            defaultAnnotation?.default ?: defaultAll
 
-            (it.asType() as Type.ClassType).interfaces_field.forEach {
+        private fun isParcelable(element: Element): Boolean {
+
+            (element.asType() as Type.ClassType).interfaces_field?.forEach {
                 if (it.asTypeName().toString().equals("android.os.Parcelable")) {
-                    implementParcelable = true
+                    return true
                 }
             }
 
-            return implementParcelable
+            return false
         }
 
         private fun isPrimitive(typeName: TypeName): Boolean {
@@ -150,12 +210,15 @@ class ObjectClassField(
             return clazz.isPrimitive || clazz.isBoxedPrimitive
         }
 
-        private fun getClassName(typeName: TypeName): com.squareup.javapoet.ClassName {
+        private fun getClassName(typeName: TypeName): ClassName {
             val splitFqName = typeName.toString().split(".")
             val className = splitFqName.last()
             val pack = splitFqName.take(splitFqName.size - 1).joinToString(".")
             return ClassName.get(pack, className)
         }
+
+        private fun isElementKeyDefined(it: VariableElement) =
+            it.getAnnotation(Key::class.java) != null
     }
 
 }

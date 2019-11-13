@@ -22,7 +22,7 @@ class AnnotationProcessor : AbstractProcessor() {
         if (roundEnv != null) {
             processAnnotatedModelClass(roundEnv)
             processAnnotatedEventClass(roundEnv)
-            processAnnotatedObjectClass(roundEnv)
+//            processAnnotatedObjectClass(roundEnv)
         }
 
         return true
