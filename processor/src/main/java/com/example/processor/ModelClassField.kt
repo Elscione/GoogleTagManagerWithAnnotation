@@ -5,16 +5,13 @@ import com.example.annotation.Key
 import com.example.annotation.Default
 import com.example.annotation.defaultvalue.*
 import com.example.processor.utils.*
-import com.squareup.javapoet.ClassName
-import com.squareup.kotlinpoet.TypeName
-import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Type
 import org.jetbrains.annotations.Nullable
-import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.VariableElement
+import javax.lang.model.util.ElementFilter
 
 class ModelClassField(
     val element: VariableElement,
@@ -45,36 +42,13 @@ class ModelClassField(
             "java.util.ArrayList" to "listOf<Any>()"
         )
 
-        val BUNDLE_TYPE = mapOf(
-            "java.lang.String" to "String",
-            "kotlin.String" to "String",
-            "kotlin.Byte" to "Byte",
-            "java.lang.Byte" to "Byte",
-            "kotlin.Short" to "Short",
-            "java.lang.Short" to "Short",
-            "kotlin.Int" to "Int",
-            "java.lang.Integer" to "Int",
-            "kotlin.Long" to "Long",
-            "java.lang.Long" to "Long",
-            "kotlin.Double" to "Double",
-            "java.lang.Double" to "Double",
-            "kotlin.Float" to "Float",
-            "java.lang.Float" to "Float",
-            "kotlin.Boolean" to "Boolean",
-            "java.lang.Boolean" to "Boolean",
-            "kotlin.Char" to "Char",
-            "java.lang.Character" to "Char",
-            "java.util.ArrayList" to "ParcelableArrayList"
-        )
-
         fun getClassFields(clazz: AnnotatedModelClass): Map<String, ModelClassField> {
             val fields = mutableMapOf<String, ModelClassField>()
-            val elements = clazz.element.enclosedElements
+            val elements = ElementFilter.fieldsIn(clazz.element.enclosedElements)
 
             elements.forEach {
                 if (it.kind == ElementKind.FIELD && (clazz.nameAsKey || isElementKeyDefined(it as VariableElement))) {
                     val defaultAnnotation = it.getAnnotation(Default::class.java)
-                    val isBundleAble: Boolean = (it as Symbol).asType().asElement().getAnnotation(BundleThis::class.java) != null
                     val defaultValue =
                         getDefaultValue(it as VariableElement, defaultAnnotation, clazz.defaultAll)
                     val key = getKey(it, clazz.nameAsKey)
@@ -83,8 +57,13 @@ class ModelClassField(
 
                     val fieldTypeName = com.squareup.javapoet.TypeName.get(it.asType())
 
+                    if(it.simpleName.toString() == "CREATOR") {
+                        return@forEach
+                    }
+
                     if(!isRawType(fieldTypeName)) {
                         val type: Type
+                        it as Symbol
                         if(isList(fieldTypeName) || isSet(fieldTypeName)) {
                             type = (it.asType() as Type.ClassType).typarams_field[0]
                         } else if(isMap(fieldTypeName)) {
