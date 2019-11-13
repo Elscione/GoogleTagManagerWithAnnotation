@@ -82,8 +82,8 @@ fun isSet(typeName: TypeName): Boolean {
 fun getOwner(field: ModelClassField) =
     (field.element as Symbol).owner.toString()
 
-fun isBundleable(field: ModelClassField) =
-    (field.element as Symbol).asType().asElement().getAnnotation(BundleThis::class.java) != null
+fun isBundleable(element: Element) =
+    (element as Symbol).asType().asElement().getAnnotation(BundleThis::class.java) != null
 
 fun isParcelable(type: Element): Boolean {
     (type.asType() as Type.ClassType).interfaces_field?.forEach {

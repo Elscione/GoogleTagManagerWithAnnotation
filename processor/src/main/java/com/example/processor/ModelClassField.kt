@@ -18,7 +18,7 @@ import javax.lang.model.element.VariableElement
 
 class ModelClassField(
     val element: VariableElement,
-    val default: Boolean,
+    val key: String,
     val defaultValue: Any?,
     val isNullable: Boolean
 ) {
@@ -81,22 +81,20 @@ class ModelClassField(
 
                     val isNullable = isElementNullable(it)
 
-                    //isPrimitive -> Long?
-                    //isNullable
-                    //isString
-                    //Object -> nullable atau bukan
-                    //String but non primitive (object null or not)
-                    //int? -> isNullable -> object -> true -> !true -> !false -> true
-
                     val fieldTypeName = com.squareup.javapoet.TypeName.get(it.asType())
 
-                    if(!isRawType(fieldTypeName) && !isMap(fieldTypeName) && !isSet(fieldTypeName) && !isList(fieldTypeName)) {
-                        if(!isBundleAble) {
-                            if(!isParcelable(it)) {
-                                throw Exception("Can't found annotation class ${BundleThis::class.java.simpleName} or Parcelable")
-                            } else {
-                                return@forEach
-                            }
+                    if(!isRawType(fieldTypeName)) {
+                        val type: Type
+                        if(isList(fieldTypeName) || isSet(fieldTypeName)) {
+                            type = (it.asType() as Type.ClassType).typarams_field[0]
+                        } else if(isMap(fieldTypeName)) {
+                            type = (it.asType() as Type.ClassType).typarams_field[1]
+                        } else {
+                            type = it.asType()
+                        }
+
+                        if(!isBundleable(type.asElement()) && !isParcelable(type.asElement())) {
+                            throw Exception("Can't found class ${BundleThis::class.java.simpleName}")
                         }
                     }
 
@@ -110,7 +108,7 @@ class ModelClassField(
                     ) {
                         fields[key!!] = ModelClassField(
                             it,
-                            isDefault(defaultAnnotation, clazz.defaultAll),
+                            key,
                             defaultValue,
                             isNullable
                         )
@@ -204,22 +202,7 @@ class ModelClassField(
                 }
             }
 
-        private fun isPrimitive(typeName: TypeName): Boolean {
-            val clazz = getClassName(typeName)
-            return clazz.isPrimitive || clazz.isBoxedPrimitive
-        }
-
-        private fun getClassName(typeName: TypeName): com.squareup.javapoet.ClassName {
-            val splitFqName = typeName.toString().split(".")
-            val className = splitFqName.last()
-            val pack = splitFqName.take(splitFqName.size - 1).joinToString(".")
-            return ClassName.get(pack, className)
-        }
-
         private fun isElementKeyDefined(it: VariableElement) = it.getAnnotation(Key::class.java) != null
-
-        private fun isNonString(it: VariableElement): Boolean = it.asType().toString() != "java.lang.String"
-
 
     }
 

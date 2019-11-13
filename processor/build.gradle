@@ -13,6 +13,7 @@ dependencies {
     implementation 'com.squareup:javapoet:1.11.1'
     implementation files("${System.getProperty('java.home')}/../lib/tools.jar")
     implementation project(':annotation')
+
     kapt "com.google.auto.service:auto-service:1.0-rc6"
 }
 
