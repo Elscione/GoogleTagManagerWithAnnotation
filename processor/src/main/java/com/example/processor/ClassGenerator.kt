@@ -3,6 +3,7 @@ package com.example.processor
 import com.example.processor.utils.*
 import com.squareup.javapoet.*
 import com.sun.tools.javac.code.Type
+import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
 
 abstract class ClassGenerator(
@@ -26,6 +27,7 @@ abstract class ClassGenerator(
     init {
         classBuilder =
             TypeSpec.classBuilder("${clazz.getClassName()}$CLASS_NAME_SUFFIX")
+                .addModifiers(Modifier.PUBLIC)
     }
 
     abstract fun generate(): JavaFile
