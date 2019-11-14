@@ -1,14 +1,16 @@
 package com.example.processor
 
-import com.example.annotation.*
+import com.example.annotation.AnalyticEvent
+import com.example.annotation.BundleThis
+import com.example.annotation.Default
+import com.example.annotation.Key
 import com.example.annotation.defaultvalue.*
-import com.example.processor.utils.*
+import com.example.processor.utils.isList
+import com.example.processor.utils.isMap
+import com.example.processor.utils.isSet
 import com.google.auto.service.AutoService
 import com.squareup.javapoet.JavaFile
-import com.squareup.javapoet.ParameterizedTypeName
 import com.squareup.javapoet.TypeName
-import com.squareup.kotlinpoet.asTypeName
-import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Type
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.FilerException
@@ -18,11 +20,9 @@ import javax.lang.model.SourceVersion
 import javax.lang.model.element.TypeElement
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.ElementFilter
-import javax.tools.Diagnostic
 import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.companionObjectInstance
 import kotlin.reflect.full.memberProperties
-import kotlin.reflect.full.staticProperties
 
 @AutoService(Processor::class)
 class AnnotationProcessor : AbstractProcessor() {
@@ -39,6 +39,7 @@ class AnnotationProcessor : AbstractProcessor() {
         if (roundEnv != null) {
             processAnnotatedModelClass(roundEnv)
             processAnnotatedEventClass(roundEnv)
+            generateFiles()
         }
 
         return true
@@ -48,16 +49,6 @@ class AnnotationProcessor : AbstractProcessor() {
         AnnotatedModelClass.getAnnotatedClasses(roundEnv, processingEnv)
         AnnotatedModelClass.annotatedClasses.forEach {
             it.fields.putAll(ModelClassField.getClassFields(it))
-        }
-        val files = mutableListOf<JavaFile>()
-        AnnotatedModelClass.annotatedClasses.forEach {
-            files.add(ModelClassGenerator(it).generate())
-        }
-        try {
-            files.forEach {
-                it.writeTo(processingEnv.filer)
-            }
-        } catch (ignored: FilerException) {
         }
     }
 
@@ -70,17 +61,28 @@ class AnnotationProcessor : AbstractProcessor() {
         AnnotatedEventClass.annotatedEventClass.forEach {
             validateRequired(it.element)
         }
+    }
 
-        val files = mutableListOf<JavaFile>()
-        AnnotatedEventClass.annotatedEventClass.forEach {
-            files.add(EventClassGenerator(it).generate())
+    private fun generateFiles() {
+        val modelFiles = mutableListOf<JavaFile>()
+        AnnotatedModelClass.annotatedClasses.forEach {
+            modelFiles.add(ModelClassGenerator(it).generate())
         }
         try {
-            files.forEach {
+            modelFiles.forEach {
                 it.writeTo(processingEnv.filer)
             }
-        } catch (ignored: FilerException) {
+        } catch (ignored: FilerException) { }
+
+        val eventFiles = mutableListOf<JavaFile>()
+        AnnotatedEventClass.annotatedEventClass.forEach {
+            eventFiles.add(EventClassGenerator(it).generate())
         }
+        try {
+            eventFiles.forEach {
+                it.writeTo(processingEnv.filer)
+            }
+        } catch (ignored: FilerException) { }
     }
 
     private fun validateRequired(classElement: TypeElement, vararg outerClass: TypeMirror) {
@@ -147,8 +149,7 @@ class AnnotationProcessor : AbstractProcessor() {
             DefaultValueShort::class.java.name,
             DefaultValueBoolean::class.java.name,
             DefaultValueByte::class.java.name,
-            AnalyticEvent::class.java.name,
-            EventParam::class.java.name
+            AnalyticEvent::class.java.name
         )
     }
 }
