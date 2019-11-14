@@ -92,7 +92,8 @@ class AnnotationProcessor : AbstractProcessor() {
         val modelName = "${type.toString().split(".").last()}Model"
         val modelClass = Class.forName("com.example.processor.models.${outerClassNames}${modelName}").kotlin
         val required: Map<*, *> =
-            modelClass.companionObject?.memberProperties?.find { it.name == modelName.replace("Model", "Bundle").decapitalize() }?.getter?.call(
+            modelClass.companionObject?.memberProperties?.find {
+                it.name == modelName.replace("Model", "Bundle").decapitalize() }?.getter?.call(
                 modelClass.companionObjectInstance
             ) as Map<*, *>
 
@@ -101,7 +102,7 @@ class AnnotationProcessor : AbstractProcessor() {
         ModelClassField.keys[type.toString()]?.forEach {
             if (required.containsKey(it.key)) {
                 if (required[it.key] != ModelClassField.keys[type.toString()]!![it.key]) {
-                    throw Exception("Element with key ${it.key} must be ${it.value} ")
+                    throw Exception("Element with key ${it.key} must be ${required.get(it.key)} ")
                 }
             }
             matchRequired.add(it.key)
