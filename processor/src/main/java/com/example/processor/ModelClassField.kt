@@ -20,6 +20,8 @@ class ModelClassField(
     val isNullable: Boolean
 ) {
     companion object {
+        val keys = HashMap<String, HashMap<String, String>>()
+
         val DEFAULT_VALUE = mapOf(
             "java.lang.String" to "\"\"",
             "kotlin.String" to "\"\"",
@@ -45,6 +47,8 @@ class ModelClassField(
         fun getClassFields(clazz: AnnotatedModelClass): Map<String, ModelClassField> {
             val fields = mutableMapOf<String, ModelClassField>()
             val elements = ElementFilter.fieldsIn(clazz.element.enclosedElements)
+
+            val keySet = HashMap<String, String>()
 
             elements.forEach {
                 if (it.kind == ElementKind.FIELD && (clazz.nameAsKey || isElementKeyDefined(it as VariableElement))) {
@@ -91,12 +95,18 @@ class ModelClassField(
                             defaultValue,
                             isNullable
                         )
+
+                        val ownerFqName = (it as Symbol).owner.toString()
+                        AnnotationProcessor.foundParams.add("${ownerFqName}.${(it as VariableElement).simpleName}")
+                        keySet[key] = it.asType().toString()
                     } else {
-                        val name = it as VariableElement
+                        val name = it
                         throw Exception("Property ${name.simpleName} on class ${clazz.getClassName()} must have default value")
                     }
                 }
             }
+
+            keys.putIfAbsent((clazz.element as Symbol.ClassSymbol).fullname.toString(), keySet)
 
             return fields
         }
