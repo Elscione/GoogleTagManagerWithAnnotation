@@ -20,6 +20,7 @@ import javax.lang.model.SourceVersion
 import javax.lang.model.element.TypeElement
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.ElementFilter
+import javax.tools.Diagnostic
 import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.companionObjectInstance
 import kotlin.reflect.full.memberProperties
@@ -39,6 +40,7 @@ class AnnotationProcessor : AbstractProcessor() {
         if (roundEnv != null) {
             processAnnotatedModelClass(roundEnv)
             processAnnotatedEventClass(roundEnv)
+
             generateFiles()
         }
 
@@ -72,7 +74,8 @@ class AnnotationProcessor : AbstractProcessor() {
             modelFiles.forEach {
                 it.writeTo(processingEnv.filer)
             }
-        } catch (ignored: FilerException) { }
+        } catch (ignored: FilerException) {
+        }
 
         val eventFiles = mutableListOf<JavaFile>()
         AnnotatedEventClass.annotatedEventClass.forEach {
@@ -82,20 +85,24 @@ class AnnotationProcessor : AbstractProcessor() {
             eventFiles.forEach {
                 it.writeTo(processingEnv.filer)
             }
-        } catch (ignored: FilerException) { }
+        } catch (ignored: FilerException) {
+        }
     }
 
     private fun validateRequired(classElement: TypeElement, vararg outerClass: TypeMirror) {
         val type = classElement.asType() as Type.ClassType
+
         val outerClassNames = StringBuilder("")
         outerClass.forEach {
             outerClassNames.append("${it.toString().split(".").last()}Model\$")
         }
         val modelName = "${type.toString().split(".").last()}Model"
-        val modelClass = Class.forName("com.example.processor.models.${outerClassNames}${modelName}").kotlin
+        val modelClass =
+            Class.forName("com.example.processor.models.${outerClassNames}${modelName}").kotlin
         val required: Map<*, *> =
             modelClass.companionObject?.memberProperties?.find {
-                it.name == modelName.replace("Model", "Bundle").decapitalize() }?.getter?.call(
+                it.name == modelName.replace("Model", "Bundle").decapitalize()
+            }?.getter?.call(
                 modelClass.companionObjectInstance
             ) as Map<*, *>
 
@@ -104,11 +111,16 @@ class AnnotationProcessor : AbstractProcessor() {
         ModelClassField.keys[type.toString()]?.forEach {
             if (required.containsKey(it.key)) {
                 if (required[it.key] != ModelClassField.keys[type.toString()]!![it.key]) {
-                    throw Exception("Element with key ${it.key} must be ${required.get(it.key)} ")
+                    processingEnv.messager.printMessage(
+                        Diagnostic.Kind.ERROR,
+                        "Element with key ${it.key} must be ${required[it.key]}",
+                        classElement
+                    )
                 }
+                matchRequired.add(it.key)
             }
-            matchRequired.add(it.key)
         }
+
 
         if (matchRequired.size < required.size) {
             throw Exception("Some required bundle element is not present")
@@ -124,10 +136,16 @@ class AnnotationProcessor : AbstractProcessor() {
     private fun validateRequired(elementType: TypeMirror, vararg outerClass: TypeMirror) {
         val fieldTypeName = TypeName.get(elementType)
 
-        if(isList(fieldTypeName) || isSet(fieldTypeName)) {
-            validateRequired((elementType as Type.ClassType).typarams_field[0].asElement() as TypeElement, *outerClass)
-        } else if(isMap(fieldTypeName)) {
-            validateRequired((elementType as Type.ClassType).typarams_field[1].asElement() as TypeElement, *outerClass)
+        if (isList(fieldTypeName) || isSet(fieldTypeName)) {
+            validateRequired(
+                (elementType as Type.ClassType).typarams_field[0].asElement() as TypeElement,
+                *outerClass
+            )
+        } else if (isMap(fieldTypeName)) {
+            validateRequired(
+                (elementType as Type.ClassType).typarams_field[1].asElement() as TypeElement,
+                *outerClass
+            )
         }
     }
 
