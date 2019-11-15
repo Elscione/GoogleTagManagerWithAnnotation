@@ -12,6 +12,8 @@ import com.google.auto.service.AutoService
 import com.squareup.javapoet.JavaFile
 import com.squareup.javapoet.TypeName
 import com.sun.tools.javac.code.Type
+import net.ltgt.gradle.incap.IncrementalAnnotationProcessor
+import net.ltgt.gradle.incap.IncrementalAnnotationProcessorType
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.FilerException
 import javax.annotation.processing.Processor
@@ -25,6 +27,7 @@ import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.companionObjectInstance
 import kotlin.reflect.full.memberProperties
 
+@IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.ISOLATING)
 @AutoService(Processor::class)
 class AnnotationProcessor : AbstractProcessor() {
 
@@ -123,7 +126,8 @@ class AnnotationProcessor : AbstractProcessor() {
 
 
         if (matchRequired.size < required.size) {
-            throw Exception("Some required bundle element is not present")
+            processingEnv.messager.printMessage(Diagnostic.Kind.ERROR,
+                "Some required bundle element is not present", classElement)
         }
 
         val fields = ElementFilter.fieldsIn(classElement.enclosedElements)
