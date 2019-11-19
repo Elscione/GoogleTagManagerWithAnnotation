@@ -32,6 +32,7 @@ class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
             bundleClassName,
             bundleClassName
         )
+        .beginControlFlow("try ")
 
     // this is where we start generating the class
     override fun generate(): JavaFile {
@@ -46,6 +47,15 @@ class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
             getBundleFuncBuilder.addCode(createPutStatement(it.value))
             getBundleFromMap.addCode(createPutStatementFromMap(it.value))
         }
+
+        getBundleFromMap
+            .nextControlFlow("catch (\$T e) ", ClassName.get("java.lang", "ClassCastException"))
+            .addStatement(
+                "\$T.e(\$S, e.getMessage())",
+                ClassName.get("android.util", "Log"),
+                "MapBundler"
+            )
+            .endControlFlow()
 
         return JavaFile.builder(
             clazz.pack,

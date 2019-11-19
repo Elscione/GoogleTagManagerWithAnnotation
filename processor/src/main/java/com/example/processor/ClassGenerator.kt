@@ -16,6 +16,7 @@ abstract class ClassGenerator(
         private val collectionClassName = ClassName.get("java.util", "Collection")
         private val arrayListClassName = ClassName.get("java.util", "ArrayList")
         private val listClassName = ClassName.get("java.util", "List")
+        private val setClassName = ClassName.get("java.util", "Set")
         private val mapClassName = ClassName.get("java.util", "Map")
     }
 
@@ -157,7 +158,11 @@ abstract class ClassGenerator(
         val parameterTypeName = TypeName.get(parameterType)
 
         if (isBundleable(parameterType.asElement() as TypeElement)) {
-            statementBuilder.add(createIteratorStatementFromMap(field, parameterTypeName))
+            if (isSet(TypeName.get(field.element.asType()))) {
+                statementBuilder.add(createIteratorStatementFromMap(field, setClassName))
+            } else {
+                statementBuilder.add(createIteratorStatementFromMap(field, listClassName))
+            }
             statementBuilder.add(createPutBundlesStatementFromMap(field, parameterTypeName))
         } else if (isParcelable(parameterType.asElement() as TypeElement)) {
             val parameterizedArrayListTypeName =
@@ -234,7 +239,7 @@ abstract class ClassGenerator(
 
     private fun createIteratorStatementFromMap(
         field: ModelClassField,
-        parameterTypeName: TypeName?
+        collectionClassName: ClassName
     ): CodeBlock {
         val statementBuilder = CodeBlock.builder()
 
@@ -245,7 +250,7 @@ abstract class ClassGenerator(
                 ParameterGenerator.createParameterizedParameter(ClassName.get(Map::class.java),
                     TypeName.get(String::class.java),
                     ClassName.get("java.lang", "Object")).type,
-                listClassName,
+                collectionClassName,
                 "data.get(\"${field.key}\")"
             )
 

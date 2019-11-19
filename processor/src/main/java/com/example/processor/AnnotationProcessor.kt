@@ -93,50 +93,52 @@ class AnnotationProcessor : AbstractProcessor() {
     }
 
     private fun validateRequired(classElement: TypeElement, vararg outerClass: TypeMirror) {
-        val type = classElement.asType() as Type.ClassType
+        try {
+            val type = classElement.asType() as Type.ClassType
 
-        val outerClassNames = StringBuilder("")
-        outerClass.forEach {
-            outerClassNames.append("${it.toString().split(".").last()}Model\$")
-        }
-        val modelName = "${type.toString().split(".").last()}Model"
-        val modelClass =
-            Class.forName("com.example.processor.models.${outerClassNames}${modelName}").kotlin
-        val required: Map<*, *> =
-            modelClass.companionObject?.memberProperties?.find {
-                it.name == modelName.replace("Model", "Bundle").decapitalize()
-            }?.getter?.call(
-                modelClass.companionObjectInstance
-            ) as Map<*, *>
-
-        val matchRequired = mutableSetOf<String>()
-
-        ModelClassField.keys[type.toString()]?.forEach {
-            if (required.containsKey(it.key)) {
-                if (required[it.key] != it.value.second) {
-                    processingEnv.messager.printMessage(
-                        Diagnostic.Kind.ERROR,
-                        "Element with key ${it.key} must be ${required[it.key]}",
-                        it.value.first
-                    )
-                }
-                matchRequired.add(it.key)
+            val outerClassNames = StringBuilder("")
+            outerClass.forEach {
+                outerClassNames.append("${it.toString().split(".").last()}Model\$")
             }
-        }
+            val modelName = "${type.toString().split(".").last()}Model"
+            val modelClass =
+                Class.forName("com.example.processor.models.${outerClassNames}${modelName}").kotlin
+            val required: Map<*, *> =
+                modelClass.companionObject?.memberProperties?.find {
+                    it.name == modelName.replace("Model", "Bundle").decapitalize()
+                }?.getter?.call(
+                    modelClass.companionObjectInstance
+                ) as Map<*, *>
+
+            val matchRequired = mutableSetOf<String>()
+
+            ModelClassField.keys[type.toString()]?.forEach {
+                if (required.containsKey(it.key)) {
+                    if (required[it.key] != it.value.second) {
+                        processingEnv.messager.printMessage(
+                            Diagnostic.Kind.ERROR,
+                            "Element with key ${it.key} must be ${required[it.key]}",
+                            it.value.first
+                        )
+                    }
+                    matchRequired.add(it.key)
+                }
+            }
 
 
-        if (matchRequired.size < required.size) {
-            processingEnv.messager.printMessage(
-                Diagnostic.Kind.ERROR,
-                "Some required bundle element is not present", classElement
-            )
-        }
+            if (matchRequired.size < required.size) {
+                processingEnv.messager.printMessage(
+                    Diagnostic.Kind.ERROR,
+                    "Some required bundle element is not present", classElement
+                )
+            }
 
-        val fields = ElementFilter.fieldsIn(classElement.enclosedElements)
+            val fields = ElementFilter.fieldsIn(classElement.enclosedElements)
 
-        fields.forEach {
-            validateRequired(it.asType(), *outerClass, classElement.asType())
-        }
+            fields.forEach {
+                validateRequired(it.asType(), *outerClass, classElement.asType())
+            }
+        } catch (ignored: ClassNotFoundException) {}
     }
 
     private fun validateRequired(elementType: TypeMirror, vararg outerClass: TypeMirror) {
