@@ -21,8 +21,8 @@ class ParameterGenerator {
             return ParameterSpec.builder(parameterType, name, *modifiers).build()
         }
 
-        fun createParameterizedParameter(parameterType: ClassName, vararg param: TypeName): ParameterizedTypeName {
-            return ParameterizedTypeName.get(parameterType, *param)
+        fun createParameterizedParameter(parameterType: ClassName, vararg param: TypeName): ParameterSpec {
+            return ParameterSpec.builder(ParameterizedTypeName.get(parameterType, *param), "data").build()
         }
     }
 }

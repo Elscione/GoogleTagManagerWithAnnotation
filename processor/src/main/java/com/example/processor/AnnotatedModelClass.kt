@@ -11,11 +11,15 @@ open class AnnotatedModelClass(
     val element: TypeElement,
     val pack: String,
     val nameAsKey: Boolean,
-    val defaultAll: Boolean) {
+    val defaultAll: Boolean
+) {
     companion object {
         val annotatedClasses = mutableSetOf<AnnotatedModelClass>()
 
-        fun getAnnotatedClasses(roundEnv: RoundEnvironment, processingEnvironment: ProcessingEnvironment) {
+        fun getAnnotatedClasses(
+            roundEnv: RoundEnvironment,
+            processingEnvironment: ProcessingEnvironment
+        ) {
             roundEnv.getElementsAnnotatedWith(BundleThis::class.java).forEach {
                 if (it.kind != ElementKind.CLASS) {
                     throw Exception("${BundleThis::class.java.name} can only be applied to a class")
@@ -26,7 +30,14 @@ open class AnnotatedModelClass(
                 val nameAsKey: Boolean = annotation.nameAsKey
                 val defaultAll: Boolean = annotation.defaultAll
 
-                annotatedClasses.add(AnnotatedModelClass(it as TypeElement, pack, nameAsKey, defaultAll))
+                annotatedClasses.add(
+                    AnnotatedModelClass(
+                        it as TypeElement,
+                        pack,
+                        nameAsKey,
+                        defaultAll
+                    )
+                )
             }
         }
     }

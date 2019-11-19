@@ -4,6 +4,7 @@ import android.os.Parcel
 import android.os.Parcelable
 import com.example.annotation.BundleThis
 import com.example.annotation.Key
+import com.example.annotation.ObjectType
 import com.example.annotation.defaultvalue.DefaultValueString
 import com.google.firebase.analytics.FirebaseAnalytics
 
@@ -46,39 +47,7 @@ data class Product (
     @Key(FirebaseAnalytics.Param.PRICE)
     val price: Double,
     @Key(FirebaseAnalytics.Param.CURRENCY)
-    val currency: String
+    val currency: String,
+    @Key("Items")
+    val shop: Shop
 )
-//
-//@BundleThis(nameAsKey = true, defaultAll = true)
-//data class Item(
-//    val title: String?,
-//    val price: Int,
-//    val quantity: Long?
-//): Parcelable {
-//    constructor(parcel: Parcel) : this(
-//        parcel.readString(),
-//        parcel.readInt(),
-//        parcel.readValue(Long::class.java.classLoader) as? Long
-//    ) {
-//    }
-//
-//    override fun writeToParcel(parcel: Parcel, flags: Int) {
-//        parcel.writeString(title)
-//        parcel.writeInt(price)
-//        parcel.writeValue(quantity)
-//    }
-//
-//    override fun describeContents(): Int {
-//        return 0
-//    }
-//
-//    companion object CREATOR : Parcelable.Creator<Item> {
-//        override fun createFromParcel(parcel: Parcel): Item {
-//            return Item(parcel)
-//        }
-//
-//        override fun newArray(size: Int): Array<Item?> {
-//            return arrayOfNulls(size)
-//        }
-//    }
-//}

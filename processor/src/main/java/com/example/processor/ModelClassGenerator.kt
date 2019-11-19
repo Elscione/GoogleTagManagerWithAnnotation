@@ -1,9 +1,11 @@
 package com.example.processor
 
+import com.squareup.javapoet.ClassName
 import com.squareup.javapoet.JavaFile
 import com.squareup.javapoet.MethodSpec
 import com.squareup.javapoet.TypeName
 import javax.lang.model.element.Modifier
+import kotlin.reflect.jvm.internal.impl.load.kotlin.JvmType
 
 // This class is used to generate the model bundler classes
 class ModelClassGenerator(clazz: AnnotatedModelClass) : ClassGenerator(clazz) {
@@ -23,10 +25,38 @@ class ModelClassGenerator(clazz: AnnotatedModelClass) : ClassGenerator(clazz) {
             bundleClassName
         )
 
+    override val getBundleFromMap: MethodSpec.Builder = MethodSpec
+        .methodBuilder("getBundle")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+        .addParameter(
+            ParameterGenerator
+                .createParameterizedParameter(
+                    ClassName.get(Map::class.java),
+                    TypeName.get(String::class.java),
+                    ClassName.get("java.lang", "Object")
+                )
+        )
+        .addStatement(
+            "\$T $BUNDLE_NAME = new \$T()",
+            bundleClassName,
+            bundleClassName
+        )
+        .beginControlFlow("try ")
+
     override fun generate(): JavaFile {
         clazz.fields.forEach {
             getBundleFuncBuilder.addCode(createPutStatement(it.value))
+            getBundleFromMap.addCode(createPutStatementFromMap(it.value))
         }
+
+        getBundleFromMap
+            .nextControlFlow("catch (\$T e) ", ClassName.get("java.lang", "ClassCastException"))
+            .addStatement(
+                "\$T.e(\$S, e.getMessage())",
+                ClassName.get("android.util", "Log"),
+                "MapBundler"
+            )
+            .endControlFlow()
 
         return JavaFile.builder(
             clazz.pack,
@@ -34,8 +64,11 @@ class ModelClassGenerator(clazz: AnnotatedModelClass) : ClassGenerator(clazz) {
                 getBundleFuncBuilder
                     .addStatement("return bundle")
                     .returns(bundleClassName)
-                    .build())
-                .build())
+                    .build()
+            )
+                .addMethod(getBundleFromMap.addStatement("return bundle").returns(bundleClassName).build())
+                .build()
+        )
             .indent("    ")
             .build()
     }

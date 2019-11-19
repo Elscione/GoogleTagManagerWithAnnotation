@@ -37,6 +37,36 @@ val RAW_BUNDLE_TYPE = mapOf(
     "java.lang.String" to "String",
     "kotlin.String" to "String"
 )
+
+val CAST = mapOf(
+    "byte" to "byte",
+    "java.lang.Byte" to "byte",
+    "kotlin.Byte" to "byte",
+    "short" to "short",
+    "java.lang.Short" to "short",
+    "kotlin.Short" to "short",
+    "int" to "int",
+    "java.lang.Integer" to "int",
+    "kotlin.Int" to "int",
+    "long" to "long",
+    "java.lang.Long" to "long",
+    "kotlin.Long" to "long",
+    "double" to "double",
+    "java.lang.Double" to "double",
+    "kotlin.Double" to "double",
+    "float" to "float",
+    "java.lang.Float" to "float",
+    "kotlin.Float" to "float",
+    "char" to "char",
+    "java.lang.Character" to "char",
+    "kotlin.Char" to "char",
+    "boolean" to "boolean",
+    "java.lang.Boolean" to "boolean",
+    "kotlin.Boolean" to "boolean",
+    "java.lang.String" to "String",
+    "kotlin.String" to "String"
+)
+
 val LIST_TYPE = listOf(
     "java.util.List",
     "java.util.ArrayList"

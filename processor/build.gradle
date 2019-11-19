@@ -15,6 +15,8 @@ dependencies {
     implementation files("${System.getProperty('java.home')}/../lib/tools.jar")
     implementation project(':annotation')
 
+    compileOnly("net.ltgt.gradle.incap:incap:0.2")
+    kapt "net.ltgt.gradle.incap:incap-processor:0.2"
     kapt "com.google.auto.service:auto-service:1.0-rc6"
 }
 

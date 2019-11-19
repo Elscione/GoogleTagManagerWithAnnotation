@@ -1,7 +1,6 @@
 package com.example.processor
 
 import com.example.annotation.AnalyticEvent
-import com.squareup.kotlinpoet.asTypeName
 import javax.annotation.processing.ProcessingEnvironment
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.element.ElementKind
@@ -12,11 +11,14 @@ class AnnotatedEventClass(
     pack: String,
     nameAsKey: Boolean,
     val eventKey: String
-): AnnotatedModelClass(element, pack, nameAsKey, true) {
+) : AnnotatedModelClass(element, pack, nameAsKey, true) {
     companion object {
         val annotatedEventClass = mutableSetOf<AnnotatedEventClass>()
 
-        fun getAnnotatedEventClasses(roundEnv: RoundEnvironment, processingEnv: ProcessingEnvironment) {
+        fun getAnnotatedEventClasses(
+            roundEnv: RoundEnvironment,
+            processingEnv: ProcessingEnvironment
+        ) {
             roundEnv.getElementsAnnotatedWith(AnalyticEvent::class.java).forEach {
                 if (it.kind != ElementKind.CLASS) {
                     throw Exception("${AnalyticEvent::class.java.name} can only be applied to a class")
@@ -27,7 +29,14 @@ class AnnotatedEventClass(
                 val nameAsKey = annotation.nameAsKey
                 val eventKey = annotation.eventKey
 
-                annotatedEventClass.add(AnnotatedEventClass(it as TypeElement, pack, nameAsKey, eventKey))
+                annotatedEventClass.add(
+                    AnnotatedEventClass(
+                        it as TypeElement,
+                        pack,
+                        nameAsKey,
+                        eventKey
+                    )
+                )
             }
         }
     }

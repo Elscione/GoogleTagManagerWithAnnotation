@@ -27,8 +27,8 @@ import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.companionObjectInstance
 import kotlin.reflect.full.memberProperties
 
-@IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.ISOLATING)
 @AutoService(Processor::class)
+@IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.ISOLATING)
 class AnnotationProcessor : AbstractProcessor() {
 
     companion object {
@@ -113,11 +113,11 @@ class AnnotationProcessor : AbstractProcessor() {
 
         ModelClassField.keys[type.toString()]?.forEach {
             if (required.containsKey(it.key)) {
-                if (required[it.key] != ModelClassField.keys[type.toString()]!![it.key]) {
+                if (required[it.key] != it.value.second) {
                     processingEnv.messager.printMessage(
                         Diagnostic.Kind.ERROR,
                         "Element with key ${it.key} must be ${required[it.key]}",
-                        classElement
+                        it.value.first
                     )
                 }
                 matchRequired.add(it.key)
@@ -126,8 +126,10 @@ class AnnotationProcessor : AbstractProcessor() {
 
 
         if (matchRequired.size < required.size) {
-            processingEnv.messager.printMessage(Diagnostic.Kind.ERROR,
-                "Some required bundle element is not present", classElement)
+            processingEnv.messager.printMessage(
+                Diagnostic.Kind.ERROR,
+                "Some required bundle element is not present", classElement
+            )
         }
 
         val fields = ElementFilter.fieldsIn(classElement.enclosedElements)
@@ -174,4 +176,6 @@ class AnnotationProcessor : AbstractProcessor() {
             AnalyticEvent::class.java.name
         )
     }
+
+
 }

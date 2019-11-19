@@ -2,6 +2,7 @@ package com.example.processor
 
 import com.squareup.javapoet.*
 import javax.lang.model.element.Modifier
+import kotlin.reflect.jvm.internal.impl.load.kotlin.JvmType
 
 // This class is used to generate the event bundler classes
 class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
@@ -9,6 +10,23 @@ class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
     override val getBundleFuncBuilder: MethodSpec.Builder = MethodSpec
         .methodBuilder("getBundle")
         .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+        .addStatement(
+            "\$T $BUNDLE_NAME = new \$T()",
+            bundleClassName,
+            bundleClassName
+        )
+
+    override val getBundleFromMap: MethodSpec.Builder = MethodSpec
+        .methodBuilder("getBundle")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+        .addParameter(
+            ParameterGenerator
+                .createParameterizedParameter(
+                    ClassName.get(Map::class.java),
+                    TypeName.get(String::class.java),
+                    ClassName.get("java.lang", "Object")
+                )
+        )
         .addStatement(
             "\$T $BUNDLE_NAME = new \$T()",
             bundleClassName,
@@ -26,6 +44,7 @@ class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
                 )
             )
             getBundleFuncBuilder.addCode(createPutStatement(it.value))
+            getBundleFromMap.addCode(createPutStatementFromMap(it.value))
         }
 
         return JavaFile.builder(
@@ -36,6 +55,12 @@ class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
                     .returns(bundleClassName)
                     .build()
             )
+                .addMethod(
+                    getBundleFromMap
+                        .addStatement("return bundle")
+                        .returns(bundleClassName)
+                        .build()
+                )
                 .build()
         )
             .indent("    ")
@@ -51,7 +76,8 @@ class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
                 "KEY",
                 Modifier.PUBLIC,
                 Modifier.STATIC,
-                Modifier.FINAL)
+                Modifier.FINAL
+            )
                 .initializer("\$S", (clazz as AnnotatedEventClass).eventKey)
                 .build()
         )

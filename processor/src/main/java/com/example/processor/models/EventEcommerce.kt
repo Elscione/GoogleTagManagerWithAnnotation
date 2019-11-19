@@ -20,6 +20,14 @@ class ProductImpressionModel {
                 "currency" to String::class.java.name
             )
         }
+
+        class ItemModel {
+            companion object {
+                val itemBundle = mapOf(
+                    "id" to String::class.java.name
+                )
+            }
+        }
     }
 }
 
@@ -42,6 +50,14 @@ class ProductClicksModel {
                 "price" to Double::class.java.name,
                 "currency" to String::class.java.name
             )
+        }
+
+        class ItemModel {
+            companion object {
+                val itemBundle = mapOf(
+                    "id" to String::class.java.name
+                )
+            }
         }
     }
 }
