@@ -5,7 +5,6 @@ import com.squareup.javapoet.JavaFile
 import com.squareup.javapoet.MethodSpec
 import com.squareup.javapoet.TypeName
 import javax.lang.model.element.Modifier
-import kotlin.reflect.jvm.internal.impl.load.kotlin.JvmType
 
 // This class is used to generate the model bundler classes
 class ModelClassGenerator(clazz: AnnotatedModelClass) : ClassGenerator(clazz) {
@@ -31,6 +30,7 @@ class ModelClassGenerator(clazz: AnnotatedModelClass) : ClassGenerator(clazz) {
         .addParameter(
             ParameterGenerator
                 .createParameterizedParameter(
+                    "data",
                     ClassName.get(Map::class.java),
                     TypeName.get(String::class.java),
                     ClassName.get("java.lang", "Object")

@@ -1,4 +1,5 @@
 package com.example.annotation
 
 @Target(AnnotationTarget.FIELD)
-annotation class Key (val key: String)
+@Retention(AnnotationRetention.SOURCE)
+annotation class Key(val key: String)

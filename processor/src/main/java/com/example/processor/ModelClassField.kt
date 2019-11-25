@@ -1,9 +1,8 @@
 package com.example.processor
 
 import com.example.annotation.BundleThis
-import com.example.annotation.Default
 import com.example.annotation.Key
-import com.example.annotation.defaultvalue.*
+import com.example.annotation.defaultvalues.*
 import com.example.processor.utils.*
 import com.squareup.javapoet.TypeName
 import com.squareup.kotlinpoet.asTypeName
@@ -54,13 +53,14 @@ class ModelClassField(
             elements.forEach {
                 if (it.kind == ElementKind.FIELD && (clazz.nameAsKey || isElementKeyDefined(it as VariableElement))) {
                     val defaultAnnotation = it.getAnnotation(Default::class.java)
+                    val key = getKey(it, clazz.nameAsKey)
                     val defaultValue =
                         getDefaultValue(it as VariableElement, defaultAnnotation, clazz.defaultAll)
-                    val key = getKey(it, clazz.nameAsKey)
+                            ?: getDefaultValueProvider(clazz, key)
 
                     val isNullable = isElementNullable(it)
 
-                    val fieldTypeName = com.squareup.javapoet.TypeName.get(it.asType())
+                    val fieldTypeName = TypeName.get(it.asType())
 
                     if (it.simpleName.toString() == "CREATOR") {
                         return@forEach
@@ -78,7 +78,10 @@ class ModelClassField(
                             type = it.asType()
                         }
 
-                        if (!isRawType(TypeName.get(type)) && !isBundleable(type.asElement()) && !isParcelable(type.asElement())) {
+                        if (!isRawType(TypeName.get(type)) && !isBundleable(type.asElement()) && !isParcelable(
+                                type.asElement()
+                            )
+                        ) {
                             throw Exception("Can't found class ${BundleThis::class.java.simpleName}")
                         }
                     }
@@ -115,6 +118,15 @@ class ModelClassField(
             return fields
         }
 
+        private fun getDefaultValueProvider(
+            clazz: AnnotatedModelClass,
+            key: String?
+        ): DefaultValueProviderFunction? {
+            return clazz.defaultValueProvider.find {
+                it.forKey == key
+            }
+        }
+
         private fun getKey(it: VariableElement, nameAsKey: Boolean): String? {
             if (nameAsKey) {
                 return it.simpleName.toString()
@@ -128,7 +140,7 @@ class ModelClassField(
         }
 
         private fun isDefault(defaultAnnotation: Default?, defaultAll: Boolean) =
-            defaultAnnotation?.default ?: defaultAll
+            defaultAnnotation?.value ?: defaultAll
 
         private fun isElementValid(
             nullable: Boolean,
@@ -215,13 +227,13 @@ class ModelClassField(
             defaultAll: Boolean
         ) =
             if (defaultAll) {
-                if (defaultAnnotation != null && !defaultAnnotation.default) {
+                if (defaultAnnotation != null && !defaultAnnotation.value) {
                     null
                 } else {
                     DEFAULT_VALUE[it.asType().asTypeName().toString()]
                 }
             } else {
-                if (defaultAnnotation != null && defaultAnnotation.default) {
+                if (defaultAnnotation != null && defaultAnnotation.value) {
                     DEFAULT_VALUE[it.asType().asTypeName().toString()]
                 } else {
                     null

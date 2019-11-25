@@ -1,4 +1,5 @@
 package com.example.annotation
 
 @Target(AnnotationTarget.CLASS)
-annotation class BundleThis(val nameAsKey: Boolean = false, val defaultAll: Boolean = false)
+@Retention(AnnotationRetention.SOURCE)
+annotation class BundleThis(val nameAsKey: Boolean = true, val defaultAll: Boolean = true)

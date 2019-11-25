@@ -13,16 +13,29 @@ class ParameterGenerator {
             return ParameterSpec.get(varElement)
         }
 
-        fun createParameter(name: String, parameterType: ClassName, vararg modifiers: Modifier): ParameterSpec {
+        fun createParameter(
+            name: String,
+            parameterType: ClassName,
+            vararg modifiers: Modifier
+        ): ParameterSpec {
             return ParameterSpec.builder(parameterType, name, *modifiers).build()
         }
 
-        fun createParameter(name: String, parameterType: TypeName, vararg modifiers: Modifier): ParameterSpec {
+        fun createParameter(
+            name: String,
+            parameterType: TypeName,
+            vararg modifiers: Modifier
+        ): ParameterSpec {
             return ParameterSpec.builder(parameterType, name, *modifiers).build()
         }
 
-        fun createParameterizedParameter(parameterType: ClassName, vararg param: TypeName): ParameterSpec {
-            return ParameterSpec.builder(ParameterizedTypeName.get(parameterType, *param), "data").build()
+        fun createParameterizedParameter(
+            name: String,
+            parameterType: ClassName,
+            vararg param: TypeName
+        ): ParameterSpec {
+            return ParameterSpec.builder(ParameterizedTypeName.get(parameterType, *param), name)
+                .build()
         }
     }
 }

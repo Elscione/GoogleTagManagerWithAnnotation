@@ -1,2 +1,2 @@
-include ':app', ':annotation', ':processor'
+include ':app', ':annotation', ':processor', ':FirebaseAnalyticRules', ':AnalyticParam'
 rootProject.name='GoogleTagManagerWithAnnotation'

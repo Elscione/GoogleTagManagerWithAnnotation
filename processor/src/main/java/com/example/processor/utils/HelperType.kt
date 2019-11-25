@@ -38,6 +38,14 @@ val RAW_BUNDLE_TYPE = mapOf(
     "kotlin.String" to "String"
 )
 
+val RAW_LIST_BUNDLE_TYPE = mapOf(
+    "int" to "IntegerArrayList",
+    "java.lang.Integer" to "IntegerArrayList",
+    "kotlin.Int" to "IntegerArrayList",
+    "java.lang.String" to "StringArrayList",
+    "kotlin.String" to "StringArrayList"
+)
+
 val CAST = mapOf(
     "byte" to "byte",
     "java.lang.Byte" to "byte",

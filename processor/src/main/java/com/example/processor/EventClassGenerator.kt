@@ -2,7 +2,6 @@ package com.example.processor
 
 import com.squareup.javapoet.*
 import javax.lang.model.element.Modifier
-import kotlin.reflect.jvm.internal.impl.load.kotlin.JvmType
 
 // This class is used to generate the event bundler classes
 class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
@@ -22,6 +21,7 @@ class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
         .addParameter(
             ParameterGenerator
                 .createParameterizedParameter(
+                    "data",
                     ClassName.get(Map::class.java),
                     TypeName.get(String::class.java),
                     ClassName.get("java.lang", "Object")
@@ -57,6 +57,8 @@ class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
             )
             .endControlFlow()
 
+        generateValidationStatement()
+
         return JavaFile.builder(
             clazz.pack,
             classBuilder.addMethod(
@@ -75,6 +77,24 @@ class EventClassGenerator(clazz: AnnotatedEventClass) : ClassGenerator(clazz) {
         )
             .indent("    ")
             .build()
+    }
+
+    // AnalyticRequirementChecker.checkRequired(ProductImpressionRules.Companion.getRules(), bundle);
+    private fun generateValidationStatement() {
+        getBundleFromMap
+            .beginControlFlow("try ")
+            .addStatement(
+                "\$T.checkRequired(\$T.Companion.getRules(), \$N)",
+                ClassName.get("com.analytic.paramchecker", "AnalyticRequirementChecker"),
+                (clazz as AnnotatedEventClass).rulesClass,
+                BUNDLE_NAME
+            )
+            .nextControlFlow(
+                "catch (\$T e) ",
+                ClassName.get("java.lang", "Exception")
+            )
+            .addStatement("e.printStackTrace()")
+            .endControlFlow()
     }
 
     // this function is used to generate the event key property

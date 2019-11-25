@@ -12,15 +12,15 @@ abstract class ClassGenerator(
 
     companion object {
         val bundleClassName = ClassName.get("android.os", "Bundle")
-        private val iteratorClassName = ClassName.get("java.util", "Iterator")
-        private val collectionClassName = ClassName.get("java.util", "Collection")
-        private val arrayListClassName = ClassName.get("java.util", "ArrayList")
-        private val listClassName = ClassName.get("java.util", "List")
-        private val setClassName = ClassName.get("java.util", "Set")
-        private val mapClassName = ClassName.get("java.util", "Map")
+        val iteratorClassName = ClassName.get("java.util", "Iterator")
+        val collectionClassName = ClassName.get("java.util", "Collection")
+        val arrayListClassName = ClassName.get("java.util", "ArrayList")
+        val listClassName = ClassName.get("java.util", "List")
+        val setClassName = ClassName.get("java.util", "Set")
+        val mapClassName = ClassName.get("java.util", "Map")
+        val BUNDLE_NAME = "bundle"
     }
 
-    protected val BUNDLE_NAME = "bundle"
     private val CLASS_NAME_SUFFIX = "Bundler"
 
     protected val classBuilder: TypeSpec.Builder
@@ -30,6 +30,7 @@ abstract class ClassGenerator(
     init {
         classBuilder =
             TypeSpec.classBuilder("${clazz.getClassName()}$CLASS_NAME_SUFFIX")
+                .addOriginatingElement(clazz.element)
                 .addModifiers(Modifier.PUBLIC)
     }
 
@@ -66,6 +67,9 @@ abstract class ClassGenerator(
 
     private fun createPutMapStatementFromMap(field: ModelClassField): CodeBlock {
         val statementBuilder = CodeBlock.builder()
+
+        statementBuilder.beginControlFlow("if (data.containsKey(\$S))", field.key)
+
         val valueType = (field.element.asType() as Type.ClassType).typeArguments[1]
         val valueTypeName = TypeName.get(valueType)
 
@@ -99,19 +103,15 @@ abstract class ClassGenerator(
             )
             statementBuilder.add(createPutParcelableArrayListStatement(field))
         } else if (isRawType(valueTypeName)) {
-            /*
-            Collection<String> descsMapValues = ((Map<String, String>) data.get("items")).values();
-            ArrayList<String> descsMapArrayList = new ArrayList<String>(descsMapValues);
-            bundle.putStringArrayList("descsMap", descsMapArrayList);
-             */
-
             // get values
             val collectionOfType = ParameterGenerator.createParameterizedParameter(
+                "data",
                 collectionClassName,
                 valueTypeName
             )
             val collectionName = "${field.key}Values"
             val mapOfType = ParameterGenerator.createParameterizedParameter(
+                "data",
                 mapClassName,
                 TypeName.get(String::class.java),
                 valueTypeName
@@ -124,6 +124,7 @@ abstract class ClassGenerator(
                 field.key
             )
             val arrayListOfType = ParameterGenerator.createParameterizedParameter(
+                "data",
                 arrayListClassName,
                 valueTypeName
             )
@@ -148,11 +149,15 @@ abstract class ClassGenerator(
             )
         }
 
-        return addNullCheck(field, statementBuilder.build())
+        statementBuilder.endControlFlow()
+
+        return statementBuilder.build()
     }
 
     private fun createPutListStatementFromMap(field: ModelClassField): CodeBlock {
         val statementBuilder = CodeBlock.builder()
+
+        statementBuilder.beginControlFlow("if (data.containsKey(\$S))", field.key)
 
         val parameterType = (field.element.asType() as Type.ClassType).typarams_field[0]
         val parameterTypeName = TypeName.get(parameterType)
@@ -182,24 +187,33 @@ abstract class ClassGenerator(
             statementBuilder.add(createPutRawsStatementFromMap(field, parameterTypeName))
         }
 
+        statementBuilder.endControlFlow()
+
         return statementBuilder.build()
     }
 
-    private fun createPutRawsStatementFromMap(field: ModelClassField, parameterTypeName: TypeName?): CodeBlock {
+    private fun createPutRawsStatementFromMap(
+        field: ModelClassField,
+        parameterTypeName: TypeName?
+    ): CodeBlock {
         val statementBuilder = CodeBlock.builder()
         val parameterizedArrayListTypeName =
             ParameterizedTypeName.get(arrayListClassName, parameterTypeName)
 
         statementBuilder.addStatement(
-            "\$N.put\$LArrayList(\$S, (\$T) \$L)",
+            "\$N.put\$L(\$S, (\$T) \$L)",
             BUNDLE_NAME,
-            RAW_BUNDLE_TYPE[parameterTypeName.toString()],
+            RAW_LIST_BUNDLE_TYPE[parameterTypeName.toString()],
             field.key,
             parameterizedArrayListTypeName,
             "data.get(\"${field.key}\")"
         )
 
-        return addNullCheck(field, statementBuilder.build())
+        return addNullCheck(
+            field,
+            statementBuilder.build(),
+            RAW_LIST_BUNDLE_TYPE[parameterTypeName.toString()]!!
+        )
     }
 
     private fun createPutBundlesStatementFromMap(
@@ -219,9 +233,12 @@ abstract class ClassGenerator(
 
         statementBuilder.addStatement(
             "\$T current = ${field.element.simpleName}Iterator.next()",
-            ParameterGenerator.createParameterizedParameter(ClassName.get(Map::class.java),
+            ParameterGenerator.createParameterizedParameter(
+                "data",
+                ClassName.get(Map::class.java),
                 TypeName.get(String::class.java),
-                ClassName.get("java.lang", "Object")).type
+                ClassName.get("java.lang", "Object")
+            ).type
         )
 
         statementBuilder.add(createPutBundleStatement(field, parameterTypeName))
@@ -247,9 +264,12 @@ abstract class ClassGenerator(
             .addStatement(
                 "\$T<\$T> ${field.element.simpleName}Iterator = ((\$T)\$L).iterator()",
                 iteratorClassName,
-                ParameterGenerator.createParameterizedParameter(ClassName.get(Map::class.java),
+                ParameterGenerator.createParameterizedParameter(
+                    "data",
+                    ClassName.get(Map::class.java),
                     TypeName.get(String::class.java),
-                    ClassName.get("java.lang", "Object")).type,
+                    ClassName.get("java.lang", "Object")
+                ).type,
                 collectionClassName,
                 "data.get(\"${field.key}\")"
             )
@@ -257,8 +277,14 @@ abstract class ClassGenerator(
         return statementBuilder.build()
     }
 
-    private fun createPutBundleStatementFromMap(field: ModelClassField, parameterTypeName: TypeName? = null): CodeBlock {
+    private fun createPutBundleStatementFromMap(
+        field: ModelClassField,
+        parameterTypeName: TypeName? = null
+    ): CodeBlock {
         val statementBuilder = CodeBlock.builder()
+
+        statementBuilder.beginControlFlow("if (data.containsKey(\$S))", field.key)
+
         val fieldBundlerClass = getBundlerClassName(parameterTypeName, field)
 
         if (parameterTypeName == null) {
@@ -266,9 +292,12 @@ abstract class ClassGenerator(
                 "bundle.putBundle(\$S, \$T.getBundle((\$T) \$L))",
                 field.key,
                 fieldBundlerClass,
-                ParameterGenerator.createParameterizedParameter(ClassName.get(Map::class.java),
+                ParameterGenerator.createParameterizedParameter(
+                    "data",
+                    ClassName.get(Map::class.java),
                     TypeName.get(String::class.java),
-                    ClassName.get("java.lang", "Object")).type,
+                    ClassName.get("java.lang", "Object")
+                ).type,
                 "data.get(\"${field.key}\")"
             )
         } else {
@@ -278,11 +307,15 @@ abstract class ClassGenerator(
             )
         }
 
+        statementBuilder.endControlFlow()
+
         return statementBuilder.build()
     }
 
     private fun createPutRawStatementFromMap(field: ModelClassField): CodeBlock {
         val statementBuilder = CodeBlock.builder()
+
+        statementBuilder.beginControlFlow("if (data.containsKey(\$S))", field.key)
 
         statementBuilder.addStatement(
             "\$N.put\$L(\$S, (\$L) \$L)",
@@ -292,6 +325,8 @@ abstract class ClassGenerator(
             CAST[field.element.asType().toString()],
             "data.get(\"${field.key}\")"
         )
+
+        statementBuilder.endControlFlow()
 
         return statementBuilder.build()
     }
@@ -328,7 +363,11 @@ abstract class ClassGenerator(
             getValueStatement(field)
         )
 
-        return addNullCheck(field, statementBuilder.build())
+        return addNullCheck(
+            field,
+            statementBuilder.build(),
+            RAW_BUNDLE_TYPE[field.element.asType().toString()]!!
+        )
     }
 
     // Some data may have an owner so that we need to specify the owner in order to get the data
@@ -345,14 +384,14 @@ abstract class ClassGenerator(
     }
 
     private fun getOwnerName(field: ModelClassField): String {
-        return if (isOwnedByThis(field)) {
+        return if (!isEventParam()) {
             getOwner(field).split(".").last().decapitalize()
         } else {
             ""
         }
     }
 
-    private fun isOwnedByThis(field: ModelClassField) = getOwner(field) == clazz.getFqName()
+    private fun isEventParam() = clazz is AnnotatedEventClass
 
     // this function is used to generate a put expression for a map data type field
     private fun createPutMapStatement(field: ModelClassField): CodeBlock {
@@ -401,15 +440,16 @@ abstract class ClassGenerator(
                 getValueStatement(field)
             )
             statementBuilder.addStatement(
-                "\$N.put\$NArrayList(\$S, \$L)",
+                "\$N.put\$N(\$S, (\$T) \$L)",
                 BUNDLE_NAME,
-                RAW_BUNDLE_TYPE[valueType.toString()],
+                RAW_LIST_BUNDLE_TYPE[valueType.toString()],
                 field.key,
+                parameterizedArrayListTypeName,
                 arrayListName
             )
         }
 
-        return addNullCheck(field, statementBuilder.build())
+        return addNullCheck(field, statementBuilder.build(), "ParcelableArrayList")
     }
 
     // this function is used to generate a put expression for data type field that implement list or set interface
@@ -418,9 +458,6 @@ abstract class ClassGenerator(
         val parameterType = (field.element.asType() as Type.ClassType).typarams_field[0]
         val parameterTypeName = TypeName.get(parameterType)
 
-        if (isMap(parameterTypeName)) {
-
-        }
         if (isBundleable(parameterType.asElement() as TypeElement)) {
             statementBuilder.add(createIteratorStatement(field, parameterTypeName))
             statementBuilder.add(createPutBundlesStatement(field, parameterTypeName))
@@ -445,14 +482,23 @@ abstract class ClassGenerator(
         return statementBuilder.build()
     }
 
-    private fun createPutRawsStatement(field: ModelClassField, parameterTypeName: TypeName): CodeBlock {
+    private fun createPutRawsStatement(
+        field: ModelClassField,
+        parameterTypeName: TypeName
+    ): CodeBlock {
         val statementBuilder = CodeBlock.builder()
+        val parameterizedTypeName = ParameterGenerator.createParameterizedParameter(
+            "type",
+            arrayListClassName,
+            parameterTypeName
+        )
 
         statementBuilder.addStatement(
-            "\$N.put\$NArrayList(\$S, \$L)",
+            "\$N.put\$N(\$S, (\$T) \$L)",
             BUNDLE_NAME,
-            RAW_BUNDLE_TYPE[parameterTypeName.toString()],
+            RAW_LIST_BUNDLE_TYPE[parameterTypeName.toString()],
             field.key,
+            parameterizedTypeName.type,
             getValueStatement(field)
         )
 
@@ -553,7 +599,7 @@ abstract class ClassGenerator(
             )
         }
 
-        return statementBuilder.build()
+        return addNullCheck(field, statementBuilder.build(), "Bundle")
     }
 
     // this function is to get the generated bundler class name
@@ -567,11 +613,14 @@ abstract class ClassGenerator(
         return ClassName.get(fieldPackage, "${fieldClassName}Bundler")
     }
 
-    private fun addNullCheck(field: ModelClassField, codeBlock: CodeBlock): CodeBlock {
+    private fun addNullCheck(
+        field: ModelClassField,
+        codeBlock: CodeBlock,
+        putType: String
+    ): CodeBlock {
         val statementBuilder = CodeBlock.builder()
 
         if (field.isNullable) {
-
             statementBuilder
                 .beginControlFlow(
                     "if(\$L == null)",
@@ -584,7 +633,7 @@ abstract class ClassGenerator(
                 .addStatement(
                     "\$N.put\$L(\$S, \$L)",
                     BUNDLE_NAME,
-                    RAW_BUNDLE_TYPE[field.element.asType().toString()],
+                    putType,
                     field.element.simpleName,
                     defaultValueWithCast
                 )
@@ -611,7 +660,11 @@ abstract class ClassGenerator(
             else -> ""
         }
 
-        return "$caster ${field.defaultValue}"
+        return if (field.defaultValue is DefaultValueProviderFunction) {
+            "${getOwnerName(field)}.${field.defaultValue.element.simpleName}()"
+        } else {
+            "$caster ${field.defaultValue}"
+        }
     }
 
 }
